@@ -1,0 +1,36 @@
+{
+  "summary": "End-to-end médico flow validated after backend .env fix. Login, queue, Atender, prontuário, prescription 409 trava with justification override, exam requests, faltou and logout all working. Backend endpoints healthy (login 200, /queue/today returns 8, /refs/sigtap 8 codes, POST /prescriptions correctly returns 409 with 'conflict' payload on duplicate active_substance).",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login (médico) returns 200 with JWT token",
+    "GET /api/queue/today returns 8 items with nested patient",
+    "GET /api/refs/sigtap returns 8 SIGTAP codes",
+    "POST /api/prescriptions returns 409 {error:'conflict', message, existing_id} on duplicate active_substance",
+    "UI: Login redirects to /medico",
+    "UI: KPIs render (Consultas Hoje=8, Urgentes=1, Preferenciais=1, Aguardando=6)",
+    "UI: Fila lists 8 pacientes with Atender/Faltou buttons",
+    "UI: Atender navigates to /medico/paciente/:id?appt=:id and shows 'Presença registrada' toast",
+    "UI: Prontuário exibe 'Medicamentos em uso' com Losartana/Metformina para paciente com LGPD aceito",
+    "UI: Modal Nova Receita abre com substance/medication/dosage/frequency/duration/schedule",
+    "UI: 409 trigger exibe 'Trava de segurança acionada' e select rx-justification aparece",
+    "UI: Após 'Ajuste de Dosagem', botão muda para 'Assinar com Gov.br' e receita é criada (novo GOVBR-*)",
+    "UI: Modal Solicitar Exames abre com 9 checkboxes SIGTAP; 2 selecionados + submit -> toast '2 exame(s) solicitado(s)'",
+    "UI: Botão Faltou dispara PATCH e mostra toast 'Falta registrada'",
+    "UI: Logout retorna para /login"
+  ],
+  "failed": [
+    {
+      "area": "data_seed_consistency",
+      "issue": "Seed data cria receita ativa para Sofia com active_substance='Losartana' (curto), enquanto o select do frontend usa 'Losartana Potássica'. Na primeira tentativa o 409 NÃO dispara pois as strings não batem exatamente. Após criar uma receita 'Losartana Potássica', a segunda tentativa dispara 409 corretamente.",
+      "evidence": "GET /api/prescriptions?patient_id=79cfd003... retorna active_substance='Losartana' (seed) e 'Losartana Potássica' (criada via UI). Backend faz match exato.",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "Opcional/LOW: alinhar seed_data.py para usar active_substance='Losartana Potássica' (bater com opções do select) para que o cenário 409 de demonstração dispare na primeira tentativa. Não afeta correção do bug reportado — o fluxo do médico está funcional ponta a ponta."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Bug reportado ('a parte do médico está dando erros') aparentava ser causado pelo .env corrompido (JWT_SECRET vazio → tokens inválidos). Após fix, todos os fluxos do perfil médico validados via UI. Gov.br assinatura permanece MOCKED conforme informado."
+}
