@@ -199,8 +199,12 @@ async def me(user: dict = Depends(get_current_user)):
 
 # ---------------- Users / Admin ----------------
 @api.get("/users")
-async def list_users(user: dict = Depends(require_roles("admin", "secretario"))):
-    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(500)
+async def list_users(user: dict = Depends(get_current_user)):
+    # Atendente needs doctor list for scheduling. Admin/Secretario see everyone.
+    if user["role"] not in ("admin", "secretario", "atendente"):
+        raise HTTPException(403, "Acesso negado")
+    query = {} if user["role"] in ("admin", "secretario") else {"role": "medico"}
+    users = await db.users.find(query, {"_id": 0, "password_hash": 0}).to_list(500)
     return users
 
 @api.post("/users")
@@ -558,6 +562,26 @@ async def sigtap(q: str = ""):
     return [c for c in SIGTAP_MOCK if ql in c["code"] or ql in c["desc"].lower()]
 
 # ---------------- Seeding ----------------
+async def refresh_vacancies():
+    """Ensure there are always active vacancies for the demo panel."""
+    await db.vacancies.delete_many({})
+    patients = await db.patients.find({}, {"_id": 0}).to_list(30)
+    if not patients:
+        return
+    specialties = ["Cardiologia", "Endocrinologia", "Clínica Geral"]
+    units = ["UBS Central", "UBS Zona Sul", "UBS Zona Norte"]
+    vacs = []
+    for i in range(3):
+        p = patients[10 + i]
+        deadline = now_utc() + timedelta(minutes=random.randint(5, 28))
+        vacs.append({"id": str(uuid.uuid4()), "patient_id": p["id"],
+                     "patient_name": p["name"], "specialty": random.choice(specialties),
+                     "unit": random.choice(units),
+                     "notified_at": iso(now_utc() - timedelta(minutes=random.randint(1, 3))),
+                     "deadline": iso(deadline), "status": "waiting_response"})
+    await db.vacancies.insert_many(vacs)
+
+
 async def seed():
     # Admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@saudeconecta.gov.br")
@@ -585,6 +609,7 @@ async def seed():
             await db.users.insert_one(u2)
 
     if await db.patients.count_documents({}) > 0:
+        await refresh_vacancies()
         return  # already seeded
 
     # Patients
@@ -691,16 +716,7 @@ async def seed():
     await db.waiting_list.insert_many(wl)
 
     # Active vacancies (simulate real-time)
-    vacs = []
-    for i in range(2):
-        p = patients[10 + i]
-        deadline = now_utc() + timedelta(minutes=random.randint(5, 25))
-        vacs.append({"id": str(uuid.uuid4()), "patient_id": p["id"],
-                     "patient_name": p["name"], "specialty": random.choice(specialties),
-                     "unit": random.choice(units),
-                     "notified_at": iso(now_utc() - timedelta(minutes=random.randint(1, 5))),
-                     "deadline": iso(deadline), "status": "waiting_response"})
-    await db.vacancies.insert_many(vacs)
+    await refresh_vacancies()
 
     logger.info("Seed complete.")
 
