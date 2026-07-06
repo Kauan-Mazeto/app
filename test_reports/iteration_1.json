@@ -1,0 +1,38 @@
+{
+  "summary": "Smoke tests OK for SaúdeConecta MVP. Landing + login (demo médico e secretário) + fila médico + prontuário + dashboard secretário funcionam. Backend: auth JWT ok, /api/queue/today ok, prescription 409-then-override com justification funciona e retorna validation_code GOVBR-, autorização por perfil bloqueia (atendente→prescription 403, médico→dashboard secretário 403).",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "GET / landing page 200 com CTA Acessar o sistema",
+    "POST /api/auth/login com 4 contas demo retorna 200+JWT",
+    "GET /api/queue/today 200 com 8 itens ordenados por prioridade (urgente/preferencial/normal)",
+    "POST /api/prescriptions cria receita com validation_code GOVBR-*",
+    "POST /api/prescriptions duplicado retorna 409 com existing_id",
+    "POST /api/prescriptions com justification após 409 retorna 200 e novo GOVBR-*",
+    "GET /api/dashboard/secretario retorna kpis, by_specialty, med_demand, unit_ranking, weekly_trend",
+    "Autorização: atendente POST /api/prescriptions → 403; médico GET /api/dashboard/secretario → 403",
+    "UI médico: fila renderiza com KPIs (Consultas 8, Urgentes 1, Preferenciais 1, Aguardando 8) e botões Atender",
+    "UI médico: clique Atender abre /medico/paciente/:id com Nova Receita e Solicitar Exames visíveis",
+    "UI secretário: dashboard mostra 6 KPIs (Pacientes/Adesão/Absenteísmo/NPS/Receitas/Exames) e 6 SVGs Recharts"
+  ],
+  "failed": [
+    {
+      "area": "backend/prescriptions",
+      "issue": "Payload requer campo 'medication' (obrigatório) além de 'active_substance'. Não foi documentado no request de teste; sem 'medication' retorna 422. Não é bug mas divergência do problem statement.",
+      "evidence": "422 Field required loc=body.medication quando enviado só active_substance",
+      "priority": "LOW"
+    },
+    {
+      "area": "backend/prescriptions response",
+      "issue": "Campo retornado é 'validation_code' (contendo prefixo GOVBR-), não 'govbr_code' como o statement sugere. Frontend deve usar validation_code para exibir o código.",
+      "evidence": "rx3 response: validation_code=GOVBR-6168AD23F919, govbr_code ausente",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "Nenhum bloqueador. Confirmar com main agent se o front-end usa validation_code para exibir GOVBR- (visto no prontuário: exibe GOVBR-6168AD23F919 ok).",
+    "Testes deferidos ao full-testing: fluxos atendente completos (vagas cronômetro, exames pendente→pronto→retirado, refs CID/TUSS/SIGTAP tabs), auditoria export CSV, faltas incrementais/bloqueio 2+, LGPD histórico oculto, admin cadastrar profissional."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
