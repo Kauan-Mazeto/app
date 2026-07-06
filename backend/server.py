@@ -636,7 +636,7 @@ async def seed():
 
     # Prescriptions
     meds = [
-        ("Losartana 50mg", "Losartana Potássica", "1 comprimido", "1x ao dia", 30, ["08:00"]),
+        ("Losartana 50mg", "Losartana Potássica", "1 comprimido", "1x ao dia", 30, ["08:00"]),  # kept for future
         ("Metformina 850mg", "Metformina", "1 comprimido", "2x ao dia", 30, ["08:00", "20:00"]),
         ("Fluoxetina 20mg", "Fluoxetina", "1 cápsula", "1x ao dia", 30, ["08:00"]),
         ("Clonazepam 2mg", "Clonazepam", "1 comprimido", "1x ao dia", 30, ["22:00"]),
