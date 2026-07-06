@@ -1,0 +1,80 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) adapted for Institutional Trust",
+  "colors": {
+    "background": "#F4F5F7",
+    "surface": "#FFFFFF",
+    "primary": "#1D3557",
+    "secondary": "#457B9D",
+    "accent_alert": "#E76F51",
+    "accent_warning": "#E9C46A",
+    "accent_success": "#1E4620",
+    "text_primary": "#1E293B",
+    "text_secondary": "#64748B",
+    "border": "#E2E8F0",
+    "sidebar_bg": "#1D3557",
+    "sidebar_text": "#F8F9FA"
+  },
+  "typography": {
+    "heading_font": "Manrope",
+    "body_font": "IBM Plex Sans",
+    "scales": {
+      "h1": "text-4xl tracking-tight font-extrabold",
+      "h2": "text-2xl tracking-tight font-bold",
+      "h3": "text-xl tracking-tight font-semibold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs uppercase tracking-[0.2em] font-semibold text-slate-500"
+    }
+  },
+  "layout": {
+    "strategy": "Control Room Grid (Dense, Scanability)",
+    "sidebar": "Collapsible left navigation (w-64 expanded, w-16 collapsed) separating the 4 user roles.",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+    "spacing_scale": "Generous internal padding for cards (p-6), tight gaps between cards (gap-4 or gap-6).",
+    "card_style": "Flat background (#FFFFFF), 1px subtle border (#E2E8F0), no default shadow. Hover: slight lift (-translate-y-1) and shadow-lg."
+  },
+  "components": {
+    "stat_cards": "Top-Left North Star metric prioritized. Include small trend sparkline (Recharts) or +/- percentage indicator. Use `data-testid='stat-card-metric'`.",
+    "data_tables": "Shadcn UI tables. Left-aligned text. Sticky headers. Use badge components for status (e.g., Ativo, Pendente, Urgente).",
+    "real_time_queue": "Grid or list view with prominent countdown timers (using monospace font for numbers). Critical times pulse with `accent_alert` border.",
+    "patient_timeline": "Vertical stepped list (like a clinical timeline). Use dots and vertical lines. High contrast dates.",
+    "prescription_form": "Shadcn UI forms. Multi-step or grouped fields (Paciente, Medicamento, Posologia). Use searchable select/combobox for CID/Medicines."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.pexels.com/photos/668300/pexels-photo-668300.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Modern hospital building exterior",
+        "category": "public_home_hero"
+      },
+      {
+        "url": "https://images.pexels.com/photos/6762866/pexels-photo-6762866.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Professional male doctor portrait",
+        "category": "doctor_avatar"
+      },
+      {
+        "url": "https://images.pexels.com/photos/15962798/pexels-photo-15962798.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Professional female doctor portrait",
+        "category": "doctor_avatar_2"
+      },
+      {
+        "url": "https://images.pexels.com/photos/6592397/pexels-photo-6592397.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Professional female office worker",
+        "category": "secretary_avatar"
+      }
+    ]
+  },
+  "interactions": {
+    "hover": "Background darkens or border changes to primary color. Explicit text color definitions.",
+    "testing": "All interactive elements MUST have `data-testid` (e.g., `data-testid='login-submit-btn'`, `data-testid='queue-accept-btn'`)."
+  },
+  "instructions_to_main_agent": [
+    "Use Manrope for headings and IBM Plex Sans for body. Configure Tailwind to load these.",
+    "Implement Recharts for Secretário dashboards (Bar charts for previsão de demanda, Line charts for NPS/Trends, Donut for mapa de gargalos).",
+    "Use Phosphor Icons or Lucide-React for clean, institutional iconography.",
+    "Ensure the sidebar navigation is accessible and supports the 4 roles cleanly.",
+    "Avoid generic Tailwind blue/purple. Stick strictly to the defined color palette to maintain the 'SUS Trust' identity.",
+    "Forms must use Shadcn components extensively, especially for the Gov.br mock login and digital prescriptions."
+  ]
+}
