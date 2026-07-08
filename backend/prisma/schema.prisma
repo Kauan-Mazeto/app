@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  passwordHash String
+  name String
+  role String
+  crm String?
+  specialty String?
+  unit String?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  appointments Appointment[]
+  prescriptions Prescription[]
+  examsRequest Exam[] @relation("ExamRequestedBy")
+  examsDeliver Exam[] @relation("ExamDeliveredBy")
+  auditLogs AuditLog[]
+}
+
+model Patient {
+  id String @id @default(uuid())
+  name String
+  cpf String @unique
+  birthDate String
+  phone String?
+  address String?
+  lgpdAccepted Boolean @default(false)
+  missedCount Int @default(0)
+  blockedOnline Boolean @default(false)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  appointments Appointment[]
+  prescriptions Prescription[]
+  exams Exam[]
+  waitingList WaitingList[]
+  vacancies Vacancy[]
+}
+
+model Appointment {
+  id String @id @default(uuid())
+  patientId String
+  doctorId String
+  specialty String
+  scheduledAt DateTime
+  priority String @default("normal")
+  unit String @default("UBS Central")
+  status String @default("aguardando")
+  justification String?
+  checkedIn Boolean @default(false)
+  createdAt DateTime @default(now())
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor User @relation(fields: [doctorId], references: [id])
+}
+
+model Prescription {
+  id String @id @default(uuid())
+  patientId String
+  doctorId String
+  doctorName String
+  doctorCrm String?
+  medication String
+  activeSubstance String
+  dosage String
+  frequency String
+  durationDays Int
+  route String @default("Oral")
+  schedule String
+  validationCode String
+  active Boolean @default(true)
+  adherenceLogs String @default("[]")
+  createdAt DateTime @default(now())
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor User @relation(fields: [doctorId], references: [id])
+}
+
+model Exam {
+  id String @id @default(uuid())
+  patientId String
+  exam String
+  preparationNotes String?
+  urgent Boolean @default(false)
+  status String @default("pendente")
+  requestedById String
+  deliveredById String?
+  deliveredAt DateTime?
+  createdAt DateTime @default(now())
+  patient Patient @relation(fields: [patientId], references: [id])
+  requestedBy User @relation("ExamRequestedBy", fields: [requestedById], references: [id])
+  deliveredBy User? @relation("ExamDeliveredBy", fields: [deliveredById], references: [id])
+}
+
+model WaitingList {
+  id String @id @default(uuid())
+  patientId String
+  specialty String
+  status String @default("waiting")
+  createdAt DateTime @default(now())
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model Vacancy {
+  id String @id @default(uuid())
+  patientId String
+  patientName String
+  specialty String
+  unit String
+  notifiedAt DateTime
+  deadline DateTime
+  status String @default("waiting_response")
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+  userId String
+  userName String
+  userRole String
+  action String
+  target String @default("")
+  details String @default("{}")
+  timestamp DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+}
