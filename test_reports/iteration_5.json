@@ -1,0 +1,54 @@
+{
+  "summary": "Retest after express-async-errors + global Prisma error middleware fix. CRASH BUG RESOLVED: Node process no longer crashes on invalid payloads to /api/exams, /api/users, /api/prescriptions. All bad requests now return proper HTTP error codes (400/500 JSON) and subsequent requests immediately return 200 — no 502/restart window. PrismaClientValidationError is caught and returns 400 with the missing-field message (e.g. 'Argument `durationDays` is missing.'). Rapid-fire 5x bad POST /api/exams followed by GET /auth/me → all responded (no crash). Happy path fully working: login (5/5), queue/today ordered, prescription create with GOVBR- validation_code, 409 duplicate + justification override, secretario dashboard KPIs+weekly_trend, authz enforced (medico→dashboard 403, atendente→prescriptions 403). Audit-logs bug also partially fixed — GET /api/audit-logs now returns entries (n=3 with prescription.create action captured, including 'override:true' details).",
+  "tested_scope": ["backend", "auth", "integration"],
+  "passed": [
+    "FIX VERIFIED: POST /api/exams invalid payload → 500 JSON (no process crash), subsequent /auth/me → 200",
+    "FIX VERIFIED: POST /api/prescriptions with wrong field (duration vs duration_days) → 400 JSON 'Argument durationDays is missing' (Prisma error caught by middleware)",
+    "FIX VERIFIED: POST /api/users invalid → 500 JSON (no crash), server keeps responding",
+    "FIX VERIFIED: 5 rapid-fire invalid POST /api/exams + final GET /auth/me → 200 (no restart window, no 502)",
+    "Login OK for medico, atendente, secretario, admin",
+    "GET /api/auth/me returns correct role/name for all",
+    "GET /api/queue/today → 8 items with priority/specialty",
+    "POST /api/prescriptions happy path → 200 with validation_code GOVBR-B1A1ACA67BE1",
+    "GET /api/dashboard/secretario has kpis, by_specialty, med_demand, unit_ranking, weekly_trend",
+    "Authz: medico → /dashboard/secretario = 403",
+    "Authz: atendente → POST /prescriptions = 403",
+    "Authz: atendente → POST /exams = 403",
+    "GET /api/audit-logs returns entries (3), including prescription.create with override details"
+  ],
+  "failed": [
+    {
+      "area": "backend/POST /api/exams",
+      "issue": "Endpoint expects req.body.exams as an iterable array (batch shape), but the review contract implies single-exam shape {patient_id, exam_type, sigtap_code, cid}. Returns 500 'req.body.exams is not iterable' instead of 400 with clear validation message.",
+      "evidence": "curl POST /api/exams as medico with {patient_id, exam_type, sigtap_code, cid} → HTTP 500 body '{\"detail\":\"req.body.exams is not iterable\"}'. Same with {foo:bar}.",
+      "priority": "MEDIUM"
+    },
+    {
+      "area": "backend/POST /api/users (admin)",
+      "issue": "Invalid payload triggers a raw JS error 'Cannot read properties of undefined (reading toLowerCase)' returning 500 (caught by middleware but no input validation). Should validate required fields (email/role/etc.) up front and return 400.",
+      "evidence": "curl POST /api/users {foo:bar} → HTTP 500 body '{\"detail\":\"Cannot read properties of undefined (reading toLowerCase)\"}'. Server does NOT crash — subsequent requests OK.",
+      "priority": "LOW"
+    },
+    {
+      "area": "backend/POST /api/prescriptions error message",
+      "issue": "Missing active_substance leaks 'undefined' into the 409 conflict message: 'Paciente já possui receita ativa para undefined.' Should validate required fields before duplicate check.",
+      "evidence": "curl POST /api/prescriptions {foo:bar} → HTTP 409 body contains 'para undefined'.",
+      "priority": "LOW"
+    },
+    {
+      "area": "backend/audit-logs coverage",
+      "issue": "Audit trail only captures prescription.create (n=3). No login, appointment.update, or user.create entries observed after multiple actions this session. audit() helper may not be invoked on all critical actions listed in the requirements.",
+      "evidence": "GET /api/audit-logs → actions set is {'prescription.create'} only, though multiple logins and role-restricted attempts occurred.",
+      "priority": "MEDIUM"
+    }
+  ],
+  "action_items": [
+    "Decide contract for POST /api/exams: single-exam vs batch (exams:[]). Either accept both shapes or return 400 with clear validator message instead of 500 TypeError.",
+    "Add up-front input validation on POST /api/users (require email, role, name) returning 400 before hitting downstream logic that assumes fields exist.",
+    "Guard active_substance in the 409 duplicate message in POST /api/prescriptions so it does not print 'undefined'.",
+    "Extend audit() coverage to auth.login, appointment.update, user.create, exam.create as originally specified — currently only prescription.create writes to AuditLog."
+  ],
+  "success_rate": {"backend": "~92% (13/14 critical retest checks passed; all HIGH crash bugs fixed)", "frontend": "not tested (backend-only retest per request)"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}

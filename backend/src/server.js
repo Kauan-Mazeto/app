@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import "express-async-errors";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
@@ -261,5 +262,18 @@ api.get("/refs/tuss", (req, res) => res.json(search(TUSS, req.query.q)));
 api.get("/refs/sigtap", (req, res) => res.json(search(SIGTAP, req.query.q)));
 
 app.use("/api", api);
+
+// Global error handler — impede crash em payloads inválidos e retorna 400/422
+app.use((err, req, res, next) => {
+  console.error("API error:", err?.name, err?.message);
+  const name = err?.name || "";
+  if (name.includes("PrismaClientValidation") || name.includes("PrismaClientKnownRequest"))
+    return res.status(400).json({ detail: err.message?.split("\n").pop()?.trim() || "Dados inválidos" });
+  res.status(500).json({ detail: err?.message || "Erro interno" });
+});
+
+process.on("unhandledRejection", (r) => console.error("unhandledRejection:", r));
+process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
+
 const port = process.env.PORT || 8001;
 app.listen(port, "0.0.0.0", () => console.log(`SaúdeConecta backend em http://0.0.0.0:${port}`));
