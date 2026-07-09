@@ -1,13 +1,31 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  FileText,
+  Package,
+  ListChecks,
+  BarChart3,
+  ShieldCheck,
+  LogOut,
+  LayoutDashboard,
+  UserCog,
+  Search,
+  Bell,
+} from "lucide-react";
 
 const navByRole = {
   medico: [
     { to: "/medico", label: "Fila do Dia", icon: LayoutDashboard, end: true },
   ],
   atendente: [
-    { to: "/atendente", label: "Agenda & Pacientes", icon: LayoutDashboard, end: true },
+    {
+      to: "/atendente",
+      label: "Agenda & Pacientes",
+      icon: LayoutDashboard,
+      end: true,
+    },
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
@@ -16,9 +34,7 @@ const navByRole = {
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
   ],
-  admin: [
-    { to: "/admin", label: "Profissionais", icon: UserCog, end: true },
-  ],
+  admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
 
 const roleLabel = {
@@ -61,7 +77,9 @@ export default function AppLayout() {
                 to={l.to}
                 end={l.end}
                 data-testid={`nav-${l.to.replace(/\//g, "-")}`}
-                className={({ isActive }) => `sc-nav-link ${isActive ? "active" : ""}`}
+                className={({ isActive }) =>
+                  `sc-nav-link ${isActive ? "active" : ""}`
+                }
               >
                 <Icon className="w-4 h-4" />
                 <span>{l.label}</span>
@@ -72,7 +90,9 @@ export default function AppLayout() {
 
         <div className="p-4 border-t border-white/10">
           <div className="text-sm font-semibold">{user.name}</div>
-          <div className="text-xs text-white/60 mb-3">{roleLabel[user.role]}</div>
+          <div className="text-xs text-white/60 mb-3">
+            {roleLabel[user.role]}
+          </div>
           <button
             data-testid="logout-btn"
             onClick={handleLogout}

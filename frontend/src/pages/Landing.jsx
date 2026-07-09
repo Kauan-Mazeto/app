@@ -27,16 +27,21 @@ export default function Landing() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-14 items-center">
         <div>
-          <div className="overline mb-4 text-[#457B9D]">Plataforma · Rede Municipal SUS</div>
+          <div className="overline mb-4 text-[#457B9D]">
+            Plataforma · Rede Municipal SUS
+          </div>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#1D3557] leading-[1.05] tracking-tight">
-            Menos filas.<br />
-            Mais adesão ao<br />
+            Menos filas.
+            <br />
+            Mais adesão ao
+            <br />
             <span className="text-[#E76F51]">tratamento contínuo.</span>
           </h1>
           <p className="mt-6 text-base text-slate-600 leading-relaxed max-w-lg">
-            Um ERP integrado para médicos, atendentes e gestores da saúde pública acompanharem
-            pacientes em uso de medicamentos controlados — com receitas digitais, painéis em tempo real
-            e indicadores que resolvem gargalos reais do SUS.
+            Um ERP integrado para médicos, atendentes e gestores da saúde
+            pública acompanharem pacientes em uso de medicamentos controlados —
+            com receitas digitais, painéis em tempo real e indicadores que
+            resolvem gargalos reais do SUS.
           </p>
           <div className="mt-8 flex gap-3">
             <Link
@@ -73,14 +78,32 @@ export default function Landing() {
       <section id="recursos" className="max-w-6xl mx-auto px-6 pb-24">
         <div className="grid md:grid-cols-4 gap-4">
           {[
-            { icon: Users, title: "4 perfis integrados", desc: "Médico, Atendente, Secretário e Admin em um único ERP." },
-            { icon: Pill, title: "Receita digital segura", desc: "Trava contra duplicidade + assinatura Gov.br." },
-            { icon: LineChart, title: "Dashboards gerenciais", desc: "Absenteísmo, adesão, NPS e previsão de demanda." },
-            { icon: ShieldCheck, title: "Auditoria completa", desc: "Log imutável de todas as ações críticas." },
+            {
+              icon: Users,
+              title: "4 perfis integrados",
+              desc: "Médico, Atendente, Secretário e Admin em um único ERP.",
+            },
+            {
+              icon: Pill,
+              title: "Receita digital segura",
+              desc: "Trava contra duplicidade + assinatura Gov.br.",
+            },
+            {
+              icon: LineChart,
+              title: "Dashboards gerenciais",
+              desc: "Absenteísmo, adesão, NPS e previsão de demanda.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Auditoria completa",
+              desc: "Log imutável de todas as ações críticas.",
+            },
           ].map((f, i) => (
             <div key={i} className="sc-card">
               <f.icon className="w-6 h-6 text-[#457B9D] mb-3" />
-              <div className="font-display font-bold text-[#1D3557]">{f.title}</div>
+              <div className="font-display font-bold text-[#1D3557]">
+                {f.title}
+              </div>
               <div className="text-sm text-slate-600 mt-1">{f.desc}</div>
             </div>
           ))}
@@ -88,7 +111,8 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        SaúdeConecta · MVP · Sistema municipal de gestão de tratamentos contínuos
+        SaúdeConecta · MVP · Sistema municipal de gestão de tratamentos
+        contínuos
       </footer>
     </div>
   );
