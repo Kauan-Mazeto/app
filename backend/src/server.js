@@ -462,6 +462,45 @@ api.get(
     });
     const medMap = {};
     for (const p of prescs)
+    api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res) => {
+      const user = req.user;
+      if (!user.healthUnitId) return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
+      const medicineId = req.body.medicine_id;
+      const qty = Number(req.body.quantity || 0);
+      if (!medicineId || qty <= 0) return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity>0 são obrigatórios" });
+
+      // find existing stock
+      let stock = await prisma.medicineStock.findFirst({ where: { healthUnitId: user.healthUnitId, medicineId } });
+      if (stock) {
+        stock = await prisma.medicineStock.update({ where: { id: stock.id }, data: { quantity: { increment: qty } } });
+      } else {
+        stock = await prisma.medicineStock.create({ data: { healthUnitId: user.healthUnitId, medicineId, quantity: qty } });
+      }
+
+      await prisma.stockTransaction.create({ data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "ENTRY", quantity: qty } });
+      res.json({ ok: true, stock });
+    });
+
+    api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res) => {
+      const user = req.user;
+      if (!user.healthUnitId) return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
+      const medicineId = req.body.medicine_id;
+      const qty = Number(req.body.quantity || 0);
+      if (!medicineId || qty <= 0) return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity>0 são obrigatórios" });
+
+      const stock = await prisma.medicineStock.findFirst({ where: { healthUnitId: user.healthUnitId, medicineId } });
+      if (!stock || stock.quantity < qty) return res.status(400).json({ detail: "Estoque insuficiente" });
+
+      const updated = await prisma.medicineStock.update({ where: { id: stock.id }, data: { quantity: { decrement: qty } } });
+      await prisma.stockTransaction.create({ data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "EXIT", quantity: qty } });
+      res.json({ ok: true, stock: updated });
+    });
+
+    api.get("/secretario/dashboard-stock", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
+      const units = await prisma.healthUnit.findMany({ include: { stocks: true } });
+      const out = units.map(u => ({ id: u.id, name: u.name, stocks: u.stocks.map(s => ({ medicineId: s.medicineId, quantity: s.quantity })) }));
+      res.json(out);
+    });
       medMap[p.medication] = (medMap[p.medication] || 0) + 1;
     const today = new Date();
     today.setHours(0, 0, 0, 0);

@@ -16,6 +16,8 @@ model User {
   crm String?
   specialty String?
   unit String?
+  healthUnitId String?
+  healthUnit HealthUnit? @relation(fields: [healthUnitId], references: [id])
   active Boolean @default(true)
   createdAt DateTime @default(now())
   appointments Appointment[]
@@ -89,7 +91,6 @@ model Exam {
   urgent Boolean @default(false)
   status String @default("pendente")
   lab_externo String?
-  protocolo_lab String?
   requestedById String
   deliveredById String?
   deliveredAt DateTime?
@@ -97,6 +98,37 @@ model Exam {
   patient Patient @relation(fields: [patientId], references: [id])
   requestedBy User @relation("ExamRequestedBy", fields: [requestedById], references: [id])
   deliveredBy User? @relation("ExamDeliveredBy", fields: [deliveredById], references: [id])
+}
+
+enum StockType {
+  ENTRY
+  EXIT
+}
+
+model HealthUnit {
+  id String @id @default(uuid())
+  name String
+  users User[]
+  stocks MedicineStock[]
+}
+
+model MedicineStock {
+  id String @id @default(uuid())
+  healthUnitId String
+  medicineId String
+  quantity Int @default(0)
+  healthUnit HealthUnit @relation(fields: [healthUnitId], references: [id])
+}
+
+model StockTransaction {
+  id String @id @default(uuid())
+  healthUnitId String
+  medicineId String
+  userId String
+  type StockType
+  quantity Int
+  createdAt DateTime @default(now())
+  healthUnit HealthUnit @relation(fields: [healthUnitId], references: [id])
 }
 
 model WaitingList {
