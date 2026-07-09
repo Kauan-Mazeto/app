@@ -5,12 +5,13 @@ import { Activity, Users, Calendar, FileText, Package, ListChecks, BarChart3, Sh
 const navByRole = {
   medico: [
     { to: "/medico", label: "Fila do Dia", icon: LayoutDashboard, end: true },
+    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
+
   ],
   atendente: [
     { to: "/atendente", label: "Agenda & Pacientes", icon: LayoutDashboard, end: true },
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
-    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
   ],
   secretario: [
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
@@ -44,10 +45,10 @@ export default function AppLayout() {
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
         <div className="px-6 py-6 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-[#E9C46A]" strokeWidth={2.5} />
+            <Activity className="w-6 h-8 text-[#E9C46A]" strokeWidth={2.5} />
             <div>
-              <div className="font-display font-extrabold text-lg tracking-tight">SaúdeConecta</div>
-              <div className="text-[11px] uppercase tracking-widest text-white/60">SUS · ERP</div>
+              <div className="font-display font-extrabold text-lg tracking-tight mt-3">Saúde Na Palma Da Mão</div>
+              <div className="text-[11px] uppercase tracking-widest text-white/60">SPM · ERP</div>
             </div>
           </div>
         </div>
