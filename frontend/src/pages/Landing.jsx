@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Activity, ArrowRight, ShieldCheck, Pill, LineChart, Users } from "lucide-react";
+import { ArrowRight, ShieldCheck, Pill, LineChart, Users } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -7,9 +7,12 @@ export default function Landing() {
       {/* Nav */}
       <header className="border-b border-slate-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-[#1D3557]" strokeWidth={2.5} />
-            <span className="font-display font-extrabold text-lg text-[#1D3557]">SaúdeConecta</span>
+          <div className="flex items-center">
+            <img
+              src="/logoProjeto.png"
+              alt="Saúde na palma da mão"
+              className="h-14 sm:h-16 w-auto object-contain"
+            />
           </div>
           <Link
             data-testid="header-login-btn"

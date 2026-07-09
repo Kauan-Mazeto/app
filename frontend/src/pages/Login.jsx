@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Activity } from "lucide-react";
 import { toast } from "sonner";
 
 const roleRedirect = { medico: "/medico", atendente: "/atendente", secretario: "/secretario", admin: "/admin" };
@@ -43,9 +42,12 @@ export default function Login() {
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left panel */}
       <div className="hidden lg:flex flex-col justify-between bg-[#1D3557] text-white p-14">
-        <Link to="/" className="flex items-center gap-2">
-          <Activity className="w-6 h-6 text-[#E9C46A]" />
-          <span className="font-display font-extrabold text-lg">SaúdeConecta</span>
+        <Link to="/" className="inline-flex items-center">
+          <img
+            src="/logoProjeto.png"
+            alt="Saúde na palma da mão"
+            className="h-20 w-auto object-contain"
+          />
         </Link>
         <div>
           <div className="overline text-white/60 mb-3">Rede Municipal · SUS</div>

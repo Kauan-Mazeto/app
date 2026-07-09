@@ -15,10 +15,13 @@ export default function EntregaExames() {
   const [q, setQ] = useState("");
 
   const load = async () => {
-    const { data } = await api.get(`/exams${filter ? `?status=${filter}` : ""}`);
+    const params = new URLSearchParams();
+    if (filter) params.set("status", filter);
+    if (q.trim()) params.set("q", q.trim());
+    const { data } = await api.get(`/exams${params.toString() ? `?${params.toString()}` : ""}`);
     setExams(data);
   };
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { load(); }, [filter, q]);
 
   const setStatus = async (id, status) => {
     try {
@@ -28,7 +31,7 @@ export default function EntregaExames() {
     } catch { toast.error("Erro"); }
   };
 
-  const filtered = exams.filter(e => !q || e.patient?.name?.toLowerCase().includes(q.toLowerCase()));
+  const filtered = exams;
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -44,8 +47,8 @@ export default function EntregaExames() {
             {s ? STATUS[s].label : "Todos"}
           </button>
         ))}
-        <input placeholder="Buscar por paciente..." value={q} onChange={(e) => setQ(e.target.value)}
-          className="ml-auto px-3 py-2 border border-slate-200 rounded-md text-sm w-72" />
+        <input placeholder="Buscar por paciente ou laboratório..." value={q} onChange={(e) => setQ(e.target.value)}
+          className="ml-auto px-3 py-2 border border-slate-200 rounded-md text-sm w-80" />
       </div>
 
       <div className="sc-card p-0 overflow-hidden">
@@ -54,6 +57,7 @@ export default function EntregaExames() {
             <tr>
               <th className="text-left px-6 py-3">Paciente</th>
               <th className="text-left px-6 py-3">Exame</th>
+              <th className="text-left px-6 py-3">Laboratório</th>
               <th className="text-left px-6 py-3">Solicitado em</th>
               <th className="text-left px-6 py-3">Status</th>
               <th className="text-right px-6 py-3">Ação</th>
@@ -64,6 +68,15 @@ export default function EntregaExames() {
               <tr key={e.id} className="border-t border-slate-100" data-testid={`exam-row-${e.id}`}>
                 <td className="px-6 py-3 font-semibold">{e.patient?.name}</td>
                 <td className="px-6 py-3 text-slate-700">{e.exam}</td>
+                <td className="px-6 py-3">
+                  {e.lab_externo ? (
+                    <span className="inline-flex items-center rounded-full bg-[#457B9D]/10 px-2.5 py-1 text-[11px] font-semibold text-[#457B9D]">
+                      {e.lab_externo}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 text-xs">Interno</span>
+                  )}
+                </td>
                 <td className="px-6 py-3 text-slate-500 font-mono-nums">{e.created_at?.slice(0, 10)}</td>
                 <td className="px-6 py-3">
                   <span className={`px-2 py-1 rounded text-[11px] font-bold ${STATUS[e.status].color}`}>{STATUS[e.status].label}</span>
@@ -75,7 +88,7 @@ export default function EntregaExames() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={5} className="p-10 text-center text-slate-400">Nenhum exame.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="p-10 text-center text-slate-400">Nenhum exame.</td></tr>}
           </tbody>
         </table>
       </div>

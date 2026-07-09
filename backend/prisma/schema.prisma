@@ -88,6 +88,8 @@ model Exam {
   preparationNotes String?
   urgent Boolean @default(false)
   status String @default("pendente")
+  lab_externo String?
+  protocolo_lab String?
   requestedById String
   deliveredById String?
   deliveredAt DateTime?

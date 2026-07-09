@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Activity, Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell } from "lucide-react";
+import { Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell } from "lucide-react";
 
 const navByRole = {
   medico: [
@@ -43,12 +43,12 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
         <div className="px-6 py-6 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-[#E9C46A]" strokeWidth={2.5} />
-            <div>
-              <div className="font-display font-extrabold text-lg tracking-tight">SaúdeConecta</div>
-              <div className="text-[11px] uppercase tracking-widest text-white/60">SUS · ERP</div>
-            </div>
+          <div className="flex items-center">
+            <img
+              src="/logoProjeto.png"
+              alt="Saúde na palma da mão"
+              className="h-20 w-auto object-contain"
+            />
           </div>
         </div>
 

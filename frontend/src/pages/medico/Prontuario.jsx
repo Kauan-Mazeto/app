@@ -37,6 +37,7 @@ export default function Prontuario() {
   const [sigtap, setSigtap] = useState([]);
   const [pickedExams, setPickedExams] = useState([]);
   const [prep, setPrep] = useState("");
+  const [examType, setExamType] = useState("externo");
   const nav = useNavigate();
 
   const loadPatient = async () => {
@@ -98,10 +99,19 @@ export default function Prontuario() {
 
   const requestExams = async () => {
     if (pickedExams.length === 0) return toast.warning("Selecione ao menos um exame");
+    if (!examType) return toast.warning("Selecione se o exame é interno ou externo");
+    const isExternal = examType === "externo";
     try {
-      await api.post("/exams", { patient_id: id, exams: pickedExams, preparation_notes: prep, urgent: false });
+      await api.post("/exams", {
+        patient_id: id,
+        exams: pickedExams,
+        preparation_notes: prep,
+        urgent: false,
+        external: isExternal,
+        lab_externo: isExternal ? "Externo" : null,
+      });
       toast.success(`${pickedExams.length} exame(s) solicitado(s)`);
-      setShowExam(false); setPickedExams([]); setPrep("");
+      setShowExam(false); setPickedExams([]); setPrep(""); setExamType("");
     } catch { toast.error("Erro ao solicitar exames"); }
   };
 
@@ -245,6 +255,13 @@ export default function Prontuario() {
           <textarea placeholder="Recomendações de preparo (ex: jejum de 12h)"
             value={prep} onChange={(e) => setPrep(e.target.value)}
             className="w-full mt-3 p-2 border border-slate-200 rounded-md text-sm" rows={2}/>
+          <div className="mt-3">
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-2">Tipo de exame</label>
+            <select value={examType} onChange={(e) => setExamType(e.target.value)} className="inp">
+              <option value="externo">Externo</option>
+              <option value="interno">Interno</option>
+            </select>
+          </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setShowExam(false)} className="btn-secondary">Cancelar</button>
             <button data-testid="exam-submit-btn" onClick={requestExams} className="btn-primary">Solicitar {pickedExams.length} exame(s)</button>

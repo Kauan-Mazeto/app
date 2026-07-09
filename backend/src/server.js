@@ -153,24 +153,37 @@ api.get("/exams", requireAuth, async (req, res) => {
   const where = {};
   if (req.query.status) where.status = req.query.status;
   if (req.query.patient_id) where.patientId = req.query.patient_id;
+  if (req.query.q) {
+    const q = req.query.q.trim();
+    where.OR = [
+      { lab_externo: { contains: q } },
+      { patient: { name: { contains: q } } },
+    ];
+  }
   const exams = await prisma.exam.findMany({ where, include: { patient: true }, orderBy: { createdAt: "desc" } });
   res.json(exams.map(e => ({
     id: e.id, exam: e.exam, status: e.status, urgent: e.urgent,
     preparation_notes: e.preparationNotes, patient_id: e.patientId,
+    lab_externo: e.lab_externo,
     created_at: e.createdAt.toISOString(), delivered_at: e.deliveredAt?.toISOString(),
     patient: { name: e.patient.name, cpf: e.patient.cpf },
   })));
 });
 api.post("/exams", requireAuth, requireRoles("medico"), async (req, res) => {
+  const isExternal = !!req.body.external;
+  if (isExternal && !String(req.body.lab_externo || "").trim())
+    return res.status(400).json({ detail: "Informe o nome do laboratório externo" });
   const created = [];
   for (const ex of req.body.exams) {
+    const labValue = isExternal ? (req.body.lab_externo || null) : null;
     created.push(await prisma.exam.create({ data: {
       patientId: req.body.patient_id, exam: ex,
       preparationNotes: req.body.preparation_notes, urgent: !!req.body.urgent,
+      lab_externo: labValue,
       requestedById: req.user.id,
     }}));
   }
-  await audit(req.user, "exam.request", req.body.patient_id, { count: created.length });
+  await audit(req.user, "exam.request", req.body.patient_id, { count: created.length, external: isExternal });
   res.json(created);
 });
 api.patch("/exams/:id/status", requireAuth, requireRoles("atendente", "admin"), async (req, res) => {
