@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Calendar, Users, Search, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export default function AtendenteDashboard() {
+  const navigate = useNavigate();
+  const [sortOrder, setSortOrder] = useState("asc"); 
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [q, setQ] = useState("");
@@ -12,7 +15,10 @@ export default function AtendenteDashboard() {
   const [medicos, setMedicos] = useState([]);
   const [ap, setAp] = useState({ patient_id: "", doctor_id: "", specialty: "Clínica Geral", scheduled_at: "", priority: "normal", unit: "UBS Central" });
   const [np, setNp] = useState({ name: "", cpf: "", birth_date: "2000-01-01", phone: "", address: "", lgpd_accepted: true });
-
+  const [filterName, setFilterName] = useState("");
+  const [filterStartTime, setFilterStartTime] = useState("");
+  const [filterEndTime, setFilterEndTime] = useState("");
+  const [filterUnit, setFilterUnit] = useState("");
   const load = async () => {
     const p = await api.get(`/patients?q=${encodeURIComponent(q)}`);
     setPatients(p.data);
@@ -74,7 +80,7 @@ export default function AtendenteDashboard() {
           <h2 className="font-display font-bold text-lg text-[#1D3557] mb-3">Buscar Paciente</h2>
           <div className="relative mb-3">
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            <input data-testid="patient-search" value={q} onChange={(e) => setQ(e.target.value)}
+            <input data-testid="patient-Fsearch" value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="Nome ou CPF..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md text-sm" />
           </div>
           <div className="max-h-96 overflow-y-auto space-y-1">
@@ -90,23 +96,93 @@ export default function AtendenteDashboard() {
           </div>
         </div>
 
-        {/* Today appointments */}
         <div className="sc-card">
-          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-3">Agenda de Hoje</h2>
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {appts.length === 0 && <div className="text-sm text-slate-400 py-8 text-center">Sem consultas para hoje.</div>}
-            {appts.map(a => (
-              <div key={a.id} className="flex justify-between items-center border border-slate-100 rounded-md p-3 text-sm">
-                <div>
-                  <div className="font-semibold">{a.patient?.name}</div>
-                  <div className="text-xs text-slate-500">{a.specialty} · {a.unit}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-mono-nums font-bold text-[#1D3557]">{a.scheduled_at?.slice(11, 16)}</div>
-                  <div className="text-xs capitalize text-slate-500">{a.status}</div>
-                </div>
+          <div className="mb-4 border-b border-slate-100 pb-3">
+            {/* Alinha o título e o botão de ordenação lado a lado no topo */}
+            <div className="flex justify-between items-center w-full">
+              <h2 className="font-display font-bold text-lg text-[#1D3557] m-0">Agenda de Hoje</h2>
+              
+              <button 
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-[#1D3557] px-2.5 py-1 rounded-md font-semibold transition"
+              >
+                Horário {sortOrder === "asc" ? "ASC ▲" : "DESC ▼"}
+              </button>
+            </div> 
+
+            {/* Filtros fixos na tela (aparecem a todo momento) */}
+            <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+              <input 
+                type="text" 
+                placeholder="Filtrar paciente..." 
+                value={filterName}
+                onChange={(e) => setFilterName(e.target.value)}
+                className="p-2 border border-slate-200 rounded-md col-span-2"
+              />
+              <div className="flex items-center gap-1">
+                <span className="text-slate-400">De:</span>
+                <input 
+                  type="time" 
+                  value={filterStartTime}
+                  onChange={(e) => setFilterStartTime(e.target.value)}
+                  className="p-1.5 border border-slate-200 rounded-md w-full"
+                />
               </div>
-            ))}
+              <div className="flex items-center gap-1">
+                <span className="text-slate-400">Até:</span>
+                <input 
+                  type="time" 
+                  value={filterEndTime}
+                  onChange={(e) => setFilterEndTime(e.target.value)}
+                  className="p-1.5 border border-slate-200 rounded-md w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Lista com a Lógica de Filtro e Ordenação Dinâmica */}
+          <div className="max-h-[260px] overflow-y-auto space-y-2">
+            {(() => {
+              // 1. Aplica os filtros de nome e horário nos dados da API
+              const filteredAppts = appts.filter(a => {
+                const matchesName = !filterName || a.patient?.name?.toLowerCase().includes(filterName.toLowerCase());
+                
+                const apptTime = a.scheduled_at?.slice(11, 16); // Recorta "HH:MM" da string ISO
+                const matchesStart = !filterStartTime || apptTime >= filterStartTime;
+                const matchesEnd = !filterEndTime || apptTime <= filterEndTime;
+
+                return matchesName && matchesStart && matchesEnd;
+              });
+
+              // 2. Ordena os resultados filtrados baseando-se no botão (Crescente ou Decrescente)
+              const sortedAppts = [...filteredAppts].sort((a, b) => {
+                const timeA = a.scheduled_at?.slice(11, 16) || "";
+                const timeB = b.scheduled_at?.slice(11, 16) || "";
+                return sortOrder === "asc" ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
+              });
+
+              if (sortedAppts.length === 0) {
+                return <div className="text-sm text-slate-400 py-8 text-center">Nenhuma consulta encontrada.</div>;
+              }
+
+              // 3. Renderiza os cards ordenados
+              return sortedAppts.map(a => (
+                <div 
+                  key={a.id} 
+                  onClick={() => navigate(`/medico/prontuario/${a.patient_id}?appt=${a.id}`)}
+                  className="flex justify-between items-center border border-slate-100 rounded-md p-3 text-sm hover:border-[#457B9D] hover:bg-slate-50 cursor-pointer transition"
+                >
+                  <div>
+                    <div className="font-semibold text-[#1D3557]">{a.patient?.name}</div>
+                    <div className="text-xs text-slate-500">{a.specialty} · {a.unit}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono-nums font-bold text-[#1D3557]">{a.scheduled_at?.slice(11, 16)}</div>
+                    <div className="text-xs capitalize text-slate-500">{a.status}</div>
+                  </div>
+                </div>
+              )); 
+            })()}
           </div>
         </div>
       </div>

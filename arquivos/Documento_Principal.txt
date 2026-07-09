@@ -1,0 +1,409 @@
+
+Me mande todas as funcionalidades que englobam o seguinte tema: Histórico de consultas e medicamentos.
+
+Tem que estar todo funcional, integrado o front end e o back end juntamente ao banco de dados
+Tudo descrito no documento. Só crie o que precisar, se nao precisar ou ja existir no sistema, tente Utilizar
+o que tem, se nao conseguir, ai voce pode fazer uma nova solucao.
+
+Atualmente, um grande número de pessoas depende do uso contínuo de medicamentos controlados para o tratamento de diversas condições de saúde. Esses medicamentos, muitas vezes fornecidos pelo sistema público de saúde, possuem regras específicas para prescrição, distribuição e renovação de receitas, exigindo acompanhamento frequente por profissionais da área médica.
+Entretanto, muitos pacientes enfrentam dificuldades para manter a adesão correta ao tratamento, seja por esquecimento dos horários de medicação, perda de consultas de acompanhamento, dificuldade de acesso às informações sobre suas receitas e tratamentos ou até mesmo um grande número de pessoas nas filas (sendo esse um problema também relatado pelos profissionais da saúde ). Essas situações podem comprometer a eficácia do tratamento, gerar desperdício de recursos públicos e aumentar os riscos à saúde do paciente.
+Então foi pensando nisso que elaboramos as duas ideias em uma solução:
+Sistema: Plataforma integrada de acompanhamento e gestão de pacientes em tratamento contínuo, composta por um aplicativo para pacientes e um sistema web para profissionais da saúde. A solução tem como objetivo facilitar o monitoramento do tratamento medicamentoso, o gerenciamento de consultas, o acesso a receitas digitais e o acompanhamento clínico dos pacientes, promovendo maior adesão ao tratamento, melhor comunicação entre pacientes e profissionais de saúde e maior eficiência nos processos de acompanhamento médico. 
+Aplicativo: Integrado ao sistema mas mais voltado ao acompanhamento de pacientes que utilizam medicamentos controlados, buscando facilitar a comunicação entre pacientes e profissionais de saúde, aumentar a adesão ao tratamento e otimizar o acompanhamento dos médicos pelo sistema descrito acima. 
+
+Detalhamento de Tasks do Projeto 'Saúde
+na Palma da Mão'
+Este documento detalha as tarefas necessárias para o desenvolvimento do projeto 'Saúde
+na Palma da Mão', conforme especificado no documento original. As tarefas são
+categorizadas por módulos e funcionalidades para facilitar o planejamento e a execução.
+. Visão Geral do Projeto
+.. Conceito Central
+• Task ..: Definir e documentar a proposta de valor do sistema integrado (aplicativo
+para pacientes e sistema web para profissionais de saúde).
+• Task ..: Validar o problema central a ser resolvido: dificuldades de adesão ao
+tratamento medicamentoso contínuo e gestão de pacientes.
+.. Objetivos Principais
+• Task ..: Facilitar o monitoramento do tratamento medicamentoso.
+• Task ..: Gerenciar consultas e acesso a receitas digitais.
+• Task ..: Promover maior adesão ao tratamento e melhor comunicação entre
+pacientes e profissionais.
+• Task ..: Otimizar a eficiência dos processos de acompanhamento médico.
+. Aplicativo para Pacientes
+.. Gestão de Agendamentos
+• Task .. (RF): Desenvolver funcionalidade para agendamento de consultas
+online.
+• Task .. (RF): Desenvolver funcionalidade para agendamento de consultas
+presenciais.
+• Task .. (RF): Implementar cancelamento de agendamentos com justificativa
+obrigatória.
+• Task .. (RF): Desenvolver funcionalidade de confirmação de presença em
+consultas.
+• Task .. (RF): Implementar lembretes de consulta com uma semana de
+antecedência.
+• Task .. (RF): Desenvolver sistema de bloqueio de agendamentos online por
+faltas injustificadas (após duas faltas, agendamento presencial obrigatório).
+• Task .. (RF): Implementar classificação automática de prioridade com base em
+pré-triagem online (Protocolo de Manchester).
+.. Gestão de Medicação
+• Task .. (RF): Desenvolver sistema de notificações para horários programados de
+medicação.
+• Task .. (RF): Implementar alertas persistentes até a confirmação da tomada do
+medicamento.
+• Task .. (RF): Desenvolver configuração opcional de confirmação por foto da
+caixa do remédio (IA Anti-Burla).
+• Task .. (RF): Integrar IA para análise de padrões de burla (fotos repetidas,
+horários exatos) e notificação ao responsável/autoridade.
+• Task .. (RF): Desenvolver exibição de informações detalhadas do medicamento
+(nome técnico/popular, fotos, cor, tamanho, formato).
+• Task .. (RF): Implementar exibição de orientações de dosagem e uso, com
+opção de incluir foto da prescrição original (via Termos de Uso).
+• Task .. (RF): Desenvolver registro de histórico de confirmações de medicação
+(horário e fotos).
+.. Gestão de Exames
+• Task .. (RF): Implementar aviso sobre exames prontos para retirada (local e
+data máxima).
+• Task .. (RF): Desenvolver notificações antecedentes à data de retirada do exame
+( semanas,  semana, , ,  dia e  horas).
+• Task .. (RF): Implementar registro de confirmação de retirada do exame pelo
+profissional de saúde.
+• Task .. (RF): Desenvolver histórico de exames (privado do paciente, com acesso
+opcional ao responsável via Termos de Uso).
+.. Histórico do Paciente
+• Task .. (RF): Desenvolver exibição de registro de atendimentos (data, hora,
+local, responsável).
+• Task .. (RF): Implementar listagem de medicamentos atualmente em uso.
+• Task .. (RF): Desenvolver registro de medicações usadas anteriormente.
+• Task .. (RF): Implementar registro de mudanças no tratamento ao longo do
+tempo.
+.. Acessibilidade
+• Task .. (RF): Desenvolver leitura de lembretes, notificações e informações
+importantes por bot humanizado (Text-to-Speech).
+• Task .. (RF): Implementar comandos por voz para consultas de horários e
+medicamentos.
+• Task .. (RF): Desenvolver interface simplificada com alto contraste, navegação
+intuitiva, botões e fontes grandes.
+.. Triagem Pré-Consulta Presencial
+• Task .. (RF): Implementar registro de sintomas e coleta de informações básicas
+pelo paciente.
+• Task .. (RF): Desenvolver pré-classificação de prioridade (Protocolo de
+Manchester) e encaminhamento.
+• Task .. (RF): Gerar relatório com informações obtidas pelo bot para o médico.
+.. Bot Humanizado
+• Task .. (RF): Desenvolver orientações gerais em todas as funcionalidades do
+aplicativo.
+• Task .. (RF): Implementar auxílio visual na navegação dentro do app/sistema.
+• Task .. (RF): Desenvolver direcionamento para atendimento humano em caso
+de falha de compreensão/erro técnico.
+.. Receitas e Atestados Digitais
+• Task .. (RF): Implementar consulta e retirada de atestados digitais com
+assinatura online e validade jurídica.
+• Task ..: Desenvolver carteira digital de receitas médicas (QR Codes e códigos).
+• Task ..: Implementar central de atestados médicos digitais autenticados (consulta e
+download em PDF).
+. Sistema Web para Profissionais de Saúde
+.. Gestão de Pacientes e Vínculos
+• Task ..: Desenvolver cadastro de médicos e profissionais de saúde.
+• Task ..: Implementar cadastro de pacientes.
+• Task ..: Desenvolver cadastro de responsáveis.
+• Task ..: Implementar funcionalidade de vincular/desvincular responsável com
+paciente.
+.. Tratamentos e Receitas
+• Task ..: Desenvolver definição de medicamento, dosagem, orientação médica e via
+de administração.
+• Task .. (RF): Implementar emissão de receita com assinatura e validação digital
+(ICP-Brasil, CFM).
+• Task ..: Desenvolver histórico de alterações nos medicamentos e receitas.
+• Task ..: Implementar trava de segurança para emissão de receitas digitais
+(verificação de receitas ativas).
+.. Gestão de Consultas e Triagem
+• Task .. (RF): Desenvolver agenda dos médicos e profissionais.
+• Task ..: Implementar horários disponíveis para consulta/agendamento.
+• Task ..: Desenvolver controle de presença por usuários, com justificativa para faltas.
+• Task ..: Implementar aplicação automática de bloqueio de agendamentos online
+por faltas e não retirada de exames.
+• Task ..: Desenvolver visualização das triagens pré-consulta.
+• Task ..: Implementar classificação por prioridade (Protocolo de Manchester) pelo
+bot humanizado/atendente.
+• Task ..: Desenvolver redirecionamento para triagem presencial em caso de dúvidas
+no atendimento online.
+• Task ..: Implementar fila de atendimento unificada por prioridade para médicos.
+.. Monitoramento de Alertas
+• Task ..: Desenvolver verificação de horários de tomada de remédios pelos
+pacientes.
+• Task ..: Implementar alertas em relação a suspeita de confirmações de horários (IA
+anti-burla).
+.. Gestão de Exames
+• Task ..: Desenvolver status dos exames (Pendente, Para retirada, etc.).
+• Task ..: Implementar controle de retirada de exames.
+• Task ..: Desenvolver controle de abandono de exames (não buscados).
+.. Relatórios e Indicadores
+• Task ..: Desenvolver relatórios diários, semanais, mensais ou anuais para análise.
+• Task ..: Implementar exportação de relatórios.
+• Task .. (RF): Desenvolver Dashboard de Monitoramento para profissionais de
+saúde (adesão, alertas, triagem).
+• Task .. (RF): Implementar Dashboard de Causas Epidemiológicas (opcional,
+análise de dados agregados da triagem).
+.. Comunicação Segura
+• Task .. (RF): Desenvolver canal de comunicação direto com pacientes para
+suporte e ajustes.
+. Requisitos Não Funcionais (RNF)
+.. Desempenho
+• Task .. (RNF): Garantir tempo de resposta máximo de  segundos para a
+maioria das interações.
+• Task .. (RNF): Garantir carregamento de dados em até  segundos em
+condições normais de rede.
+.. Segurança
+• Task .. (RNF): Implementar criptografia de dados em trânsito e em repouso
+(LGPD).
+• Task .. (RNF): Desenvolver sistema de autenticação robusto (biometria, FA).
+• Task .. (RNF): Utilizar certificados ICP-Brasil para assinatura digital de
+documentos.
+• Task .. (RNF): Implementar registro de auditoria para todas as ações críticas.
+.. Usabilidade
+• Task .. (RNF): Garantir interface intuitiva e fácil de usar.
+• Task .. (RNF): Garantir consistência de design e comportamento em todo o
+aplicativo.
+• Task .. (RNF): Fornecer feedback visual claro para todas as ações do usuário.
+.. Confiabilidade
+• Task .. (RNF): Garantir disponibilidade do aplicativo de ,% do tempo.
+• Task .. (RNF): Implementar recuperação de falhas rápida e transparente.
+.. Manutenibilidade
+• Task .. (RNF): Garantir código modular e bem documentado.
+• Task .. (RNF): Garantir escalabilidade do sistema para suportar crescimento de
+usuários e dados.
+.. Compatibilidade
+• Task .. (RNF): Garantir compatibilidade multiplataforma (iOS e Android, versões
+recentes e duas anteriores).
+• Task .. (RNF): Garantir integração transparente com o sistema web para
+profissionais de saúde.
+.. Regulamentação
+• Task .. (RNF): Garantir conformidade com Portaria SVS/MS nº /, RDC
+/ da Anvisa e LGPD.
+• Task .. (RNF): Aderir a padrões de interoperabilidade de saúde relevantes (HL,
+FHIR, se aplicável).
+. Tasks Específicas por Perfil de Usuário
+.. Paciente
+• Task ..: Agendamento de Consultas Online (detalhado em ..)
+• Task ..: Cancelamento de Agendamento com Justificativa Obrigatória (detalhado
+em ..)
+• Task ..: Confirmação Digital de Presença na Consulta (detalhado em ..)
+• Task ..: Lembrete Prévio de Consulta ( dias antes) (detalhado em ..)
+• Task ..: Gatilho de Conscientização por Faltas Não Justificadas (detalhado em ..)
+• Task ..: Alarme de Horário de Medicamentos (detalhado em ..)
+• Task ..: Sistema de Alertas Repetitivos (detalhado em ..)
+• Task ..: Monitoramento de Inconsistência na Confirmação (IA Anti-Burla) (detalhado
+em .. e ..)
+• Task ..: Identificação Visual do Medicamento (detalhado em ..)
+• Task ..: Central de Orientações e Dosagem de Uso (detalhado em ..)
+• Task ..: Relatório Histórico de Ingestão de Medicamentos (detalhado em ..)
+• Task ..: Notificação de Exame Pronto para Retirada (detalhado em ..)
+• Task ..: Alerta de Prazo para Retirada de Exame (detalhado em ..)
+• Task ..: Confirmação Digital de Retirada de Exames (detalhado em ..)
+• Task ..: Arquivo Permanente de Exames Realizados (detalhado em ..)
+• Task ..: Histórico Cronológico de Consultas Realizadas (detalhado em ..)
+• Task ..: Lista Ativa de Medicamentos em Uso (detalhado em ..)
+• Task ..: Registro de Medicamentos Usados Anteriormente (detalhado em ..)
+• Task ..: Linha do Tempo de Mudanças no Tratamento (detalhado em ..)
+• Task ..: Leitura por Áudio de Alertas e Notificações (Text-to-Speech) (detalhado em
+..)
+• Task ..: Navegação e Consulta por Comando de Voz (detalhado em ..)
+• Task ..: Interface Ultra-Simplificada de Alto Contraste (detalhado em ..)
+• Task ..: Formulário Interativo de Sintomas Iniciais (detalhado em ..)
+• Task ..: Classificação de Risco via Protocolo de Manchester Virtual (detalhado em
+..)
+• Task ..: Assistente Virtual de Orientação Geral (Chatbot) (detalhado em ..)
+• Task ..: Carteira Digital de Receitas Médicas (detalhado em ..)
+• Task ..: Central de Atestados Médicos Digitais Autenticados (detalhado em ..)
+• Task ..: Visualização do histórico de laudos, atestados médicos, etc. de
+dependentes (filhos/pais).
+.. Médico
+• Task ..: Relatório diário de consultas (incluindo nível de prioridade e
+cancelamentos).
+• Task ..: Fila de atendimento unificada por prioridade (online e presencial).
+• Task ..: Acesso ao histórico do paciente (medicamentos atuais/anteriores,
+alterações de dosagem) após autorização (LGPD).
+• Task ..: Elaboração de receitas digitais com trava de segurança e justificativa
+obrigatória.
+• Task ..: Emissão de Documentos Digitais com Assinatura (integração ITI/CFM, CRM,
+certificados digitais).
+.. Atendente
+• Task ..: Recepção sem papel (otimização do acesso à consulta via pré-triagem do
+app).
+• Task ..: Agendamento de Consultas Presenciais (interface para atendente).
+• Task ..: CRUD (Criar, Ler, Atualizar, Inativar) de dados do paciente.
+• Task ..: Redirecionar para triagem em casos de atendimento presencial (baseado
+em Protocolo de Manchester).
+• Task ..: Gestão e ferramentas de apoio (buscadores técnicos: CID, TUSS, SIGTAP).
+• Task ..: Indicadores de qualidade (NPS, tempo de espera, taxa de absenteísmo).
+.. Secretário de Saúde
+• Task ..: Previsão da demanda de medicamentos (com base em pacientes,
+dosagens, frequência).
+• Task ..: Relatórios diários, semanais, mensais e anuais (com gráficos de
+atendimento, cancelamentos).
+• Task ..: Controle sobre os médicos cadastrados (histórico de atendimento,
+prescrições).
+• Task ..: Insights sobre medicamentos parados (alertas de vencimento, excesso de
+compra).
+• Task ..: Ranking de eficiência por Unidade de Saúde (taxas de falta, volume de
+atendimento).
+• Task ..: Índice de Satisfação do Cidadão (NPS da Saúde) por unidade e médico.
+• Task ..: Controle de Auditoria de Receitas Digitais (log completo, filtros,
+identificação de irregularidades).
+. Glossário e Referências
+• Task ..: Manter glossário atualizado com termos técnicos (LGPD, ICP-Brasil, RDC
+/, Portaria SVS/MS nº /, SNCR, UX/UI, HL/FHIR).
+• Task ..: Manter referências bibliográficas e legais atualizadas.
+Este detalhamento serve como um backlog inicial para o desenvolvimento do projeto,
+permitindo que cada item seja transformado em uma tarefa executável com critérios de
+aceitação claros.
+
+
+
+
+Requisitos de Acessibilidade e UX
+Inclusiva: Projeto 'Saúde na Palma da Mão'
+Este documento detalha as diretrizes e requisitos de acessibilidade e experiência do
+usuário (UX) inclusiva para o projeto 'Saúde na Palma da Mão', garantindo que a solução
+seja utilizável por todos os cidadãos, independentemente de suas habilidades físicas,
+sensoriais ou cognitivas. Estes requisitos são fundamentais para o sucesso de uma licitação
+pública e para o impacto social do projeto.
+. Diretrizes Gerais de Acessibilidade
+O sistema deve seguir as diretrizes internacionais e nacionais de acessibilidade na web e
+em aplicativos móveis:
+• WCAG . (Web Content Accessibility Guidelines): Nível AA como requisito mínimo.
+• eMAG (Modelo de Acessibilidade em Governo Eletrônico): Conformidade com as
+normas brasileiras para sites governamentais.
+• ABNT NBR : Acessibilidade em sistemas de comunicação e informação.
+. Requisitos de Interface e Design (UI)
+.. Visual e Contraste
+• Alto Contraste: Implementar um modo de alto contraste para usuários com baixa visão.
+• Contraste de Texto: Garantir uma razão de contraste mínima de .: para texto
+normal e : para texto grande.
+• Cores Não Exclusivas: Nunca usar a cor como o único meio de transmitir informação
+ou indicar uma ação.
+• Fontes Escaláveis: Permitir que o usuário aumente o tamanho da fonte em até %
+sem perda de funcionalidade ou sobreposição de elementos.
+.. Layout e Navegação
+• Interface Ultra-Simplificada: Reduzir a carga cognitiva com layouts limpos, sem
+poluição visual.
+• Botões Grandes: Elementos interativos devem ter uma área de toque mínima de x
+pixels.
+• Navegação Consistente: Manter a mesma estrutura de navegação em todas as telas.
+• Feedback de Foco: Garantir que o foco do teclado seja claramente visível em todos os
+elementos interativos.
+. Requisitos de Interação e Tecnologia Assistiva
+.. Leitores de Tela e Áudio
+• Compatibilidade com Leitores de Tela: Suporte total a VoiceOver (iOS), TalkBack
+(Android) e NVDA/JAWS (Web).
+• Text-to-Speech (TTS): Implementar um bot humanizado para leitura de notificações,
+lembretes e instruções.
+• Textos Alternativos (Alt-text): Fornecer descrições textuais para todas as imagens,
+ícones e elementos não textuais significativos.
+.. Comandos de Voz e Entrada
+• Reconhecimento de Voz: Permitir que o usuário realize ações básicas (consultar
+horários, confirmar medicação) por comandos de voz.
+• Entrada de Teclado: Garantir que todas as funcionalidades sejam acessíveis via
+teclado ou chaves externas.
+• Feedback Tátil: Usar vibrações (haptic feedback) para confirmar ações importantes ou
+emitir alertas para usuários com deficiência auditiva.
+. UX para Públicos Específicos
+.. Idosos
+• Linguagem Simples: Evitar termos técnicos complexos ou jargões médicos.
+• Instruções Passo a Passo: Dividir tarefas complexas em etapas simples e guiadas.
+• Tempo de Resposta: Não impor limites de tempo curtos para interações ou
+preenchimento de formulários.
+.. Pessoas com Baixa Alfabetização Digital
+• Ícones Autoexplicativos: Usar ícones universais acompanhados de rótulos de texto
+claros.
+• Tutoriais Assistidos: Oferecer um tour guiado (onboarding) na primeira utilização do
+sistema.
+
+
+
+
+
+
+
+
+
+Documento Técnico Unificado: Projeto
+'Saúde na Palma da Mão'
+Este documento consolida as especificações técnicas, arquiteturais, de segurança e de
+acessibilidade para o projeto 'Saúde na Palma da Mão'. O objetivo é fornecer uma base
+sólida para o desenvolvimento de um Produto Mínimo Viável (MVP) funcional, visando uma
+competição de inovação e, posteriormente, a adequação para processos de licitação
+pública.
+. Visão Estratégica e Objetivos
+O projeto 'Saúde na Palma da Mão' visa revolucionar o acesso e a gestão da saúde pública
+municipal. O sistema integrado (aplicativo móvel e plataforma web) tem como meta
+principal a digitalização dos serviços, a redução de custos operacionais e a melhoria da
+qualidade de vida dos cidadãos.
+Meta Principal (/): O objetivo central é que % das consultas e interações
+(agendamentos, renovação de receitas, acompanhamento) sejam realizadas digitalmente
+através da plataforma, enquanto % permaneçam no modelo presencial tradicional,
+otimizando o fluxo nas unidades de saúde.
+O público-alvo é universal, abrangendo todos os cidadãos que utilizam o sistema público
+de saúde, exigindo um foco rigoroso em acessibilidade e inclusão digital.
+. Arquitetura Técnica e Stack Tecnológica
+A escolha da stack tecnológica foi baseada na necessidade de desenvolvimento ágil para o
+MVP, escalabilidade futura e facilidade de manutenção.
+.. Aplicativo Móvel (Pacientes)
+• Framework: React Native.
+• Justificativa: Permite o desenvolvimento multiplataforma (iOS e Android) com uma
+única base de código, acelerando a entrega do MVP e reduzindo custos de
+desenvolvimento e manutenção.
+.. Sistema Web (Profissionais de Saúde e Gestores)
+• Frontend: Angular.
+• Justificativa: Framework robusto, ideal para aplicações corporativas complexas (Single
+Page Applications - SPAs), oferecendo forte tipagem (TypeScript) e estrutura modular,
+essencial para os dashboards e interfaces de gestão.
+.. Backend (API e Lógica de Negócios)
+• Ambiente/Framework: Node.js com Express.
+• ORM (Object-Relational Mapping): Prisma.
+• Justificativa: Node.js oferece alta performance para operações de I/O assíncronas
+(como consultas a banco de dados e integrações). O Express é um framework
+minimalista e flexível para construção de APIs RESTful. O Prisma simplifica o acesso ao
+banco de dados, garantindo tipagem segura e consultas eficientes.
+.. Banco de Dados
+• Sistema de Gerenciamento: PostgreSQL.
+• Justificativa: Banco de dados relacional open-source, altamente confiável, escalável e
+com forte conformidade ACID, ideal para lidar com dados sensíveis de saúde e
+relacionamentos complexos (pacientes, médicos, consultas, receitas).
+. Segurança da Informação e Conformidade (LGPD)
+A segurança dos dados de saúde é crítica. O sistema deve ser projetado desde o início
+(Privacy by Design) para garantir a conformidade com a Lei Geral de Proteção de Dados
+(LGPD) e normas da ANVISA.
+.. Proteção de Dados
+• Criptografia em Trânsito: Todo o tráfego de dados entre o aplicativo, o sistema web e
+o backend deve ser criptografado utilizando TLS . ou superior (HTTPS).
+• Criptografia em Repouso: Dados sensíveis no banco de dados (PostgreSQL) devem ser
+criptografados, garantindo proteção mesmo em caso de acesso não autorizado ao
+armazenamento físico.
+.. Autenticação e Controle de Acesso
+• Autenticação Robusta: Implementação de autenticação baseada em tokens (JWT -
+JSON Web Tokens) para a API.
+• Controle de Acesso Baseado em Funções (RBAC): O sistema deve garantir que cada
+perfil de usuário (Paciente, Médico, Atendente, Secretário) tenha acesso apenas aos
+dados e funcionalidades estritamente necessários para sua função.
+.. Auditoria e Rastreabilidade
+• Logs de Auditoria: Registro imutável de todas as ações críticas (acesso a prontuários,
+emissão de receitas, alterações de dados), incluindo identificação do usuário, data,
+hora e ação realizada, para fins de fiscalização e conformidade.
+. Acessibilidade Universal e UX Inclusiva
+Como um sistema de saúde pública, a plataforma deve ser utilizável por todos, incluindo
+idosos e pessoas com deficiência.
+.. Diretrizes de Design (UI)
+• Alto Contraste e Legibilidade: A interface (tanto no React Native quanto no Angular)
+deve suportar modos de alto contraste e fontes escaláveis, seguindo as diretrizes WCAG
+. (Nível AA).
+• Simplicidade Cognitiva: Layouts limpos, botões grandes (área de toque mínima de
+xpx no mobile) e fluxos de navegação intuitivos, evitando jargões médicos
+complexos.
+.. Tecnologias Assistivas
+• Leitores de Tela: O aplicativo React Native deve ser otimizado para VoiceOver (iOS) e
+TalkBack (Android). O sistema web Angular deve suportar leitores de tela como NVDA e
+JAWS.
+• Text-to-Speech (TTS): Implementação de leitura em áudio para notificações e
+instruções importantes no aplicativo.
+
+

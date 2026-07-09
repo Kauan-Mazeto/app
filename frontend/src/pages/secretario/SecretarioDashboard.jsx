@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, Users, AlertTriangle, Heart, Pill, Package } from "lucide-react";
+import { TrendingUp, Users, AlertTriangle, Heart, Pill, Package, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const COLORS = ["#1D3557", "#457B9D", "#E76F51", "#E9C46A", "#2A9D8F", "#8D99AE"];
@@ -84,6 +84,23 @@ export default function SecretarioDashboard() {
               <Bar dataKey="patients" fill="#457B9D" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </Card>
+
+        <Card title="Últimas ações do sistema">
+          <div className="space-y-3">
+            {(d.recent_activity || []).slice(0, 6).map((item) => (
+              <div key={item.id} className="flex items-start gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                <div className="w-8 h-8 rounded-full bg-[#1D3557]/10 flex items-center justify-center mt-0.5">
+                  <ClipboardList className="w-4 h-4 text-[#1D3557]" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-[#1D3557]">{item.action}</div>
+                  <div className="text-xs text-slate-500">{item.user_name} · {item.target}</div>
+                  <div className="text-[11px] text-slate-400">{new Date(item.timestamp).toLocaleString("pt-BR")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
 
         <Card title="Mapa de gargalos · Absenteísmo por especialidade">

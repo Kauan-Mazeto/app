@@ -24,6 +24,17 @@ const toAppt = (a) => ({
   scheduled_at: a.scheduledAt.toISOString(),
   patient: a.patient ? { name: a.patient.name, cpf: a.patient.cpf, birth_date: a.patient.birthDate } : {},
 });
+const parseJson = (value, fallback = []) => {
+  if (!value) return fallback;
+  try { return typeof value === "string" ? JSON.parse(value) : value; } catch { return fallback; }
+};
+const toPrescription = (r) => ({
+  id: r.id, patient_id: r.patientId, medication: r.medication, active_substance: r.activeSubstance,
+  dosage: r.dosage, frequency: r.frequency, doctor_name: r.doctorName,
+  validation_code: r.validationCode, active: r.active,
+  schedule: parseJson(r.schedule, []), adherence_logs: parseJson(r.adherenceLogs, []),
+  created_at: r.createdAt?.toISOString(),
+});
 
 api.post("/auth/login", async (req, res) => {
   const user = await prisma.user.findUnique({ where: { email: req.body.email?.toLowerCase() } });
@@ -61,13 +72,15 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
   const p = await prisma.patient.findUnique({ where: { id: req.params.id } });
   if (!p) return res.status(404).json({ detail: "Paciente não encontrado" });
   const base = toPatient(p);
-  if (!p.lgpdAccepted) return res.json({ ...base, history_hidden: true, prescriptions_history: [] });
-  const prescs = await prisma.prescription.findMany({ where: { patientId: p.id }, orderBy: { createdAt: "desc" } });
-  res.json({ ...base, prescriptions_history: prescs.map(r => ({
-    id: r.id, medication: r.medication, active_substance: r.activeSubstance,
-    dosage: r.dosage, frequency: r.frequency, doctor_name: r.doctorName,
-    validation_code: r.validationCode, active: r.active,
-    schedule: JSON.parse(r.schedule), adherence_logs: JSON.parse(r.adherenceLogs),
+  if (!p.lgpdAccepted) return res.json({ ...base, history_hidden: true, prescriptions_history: [], appointments_history: [] });
+  const [prescs, appointments] = await Promise.all([
+    prisma.prescription.findMany({ where: { patientId: p.id }, orderBy: { createdAt: "desc" } }),
+    prisma.appointment.findMany({ where: { patientId: p.id }, include: { doctor: true }, orderBy: { scheduledAt: "desc" } }),
+  ]);
+  res.json({ ...base, prescriptions_history: prescs.map(toPrescription), appointments_history: appointments.map((a) => ({
+    id: a.id, specialty: a.specialty, priority: a.priority, status: a.status,
+    scheduled_at: a.scheduledAt.toISOString(), unit: a.unit,
+    doctor_name: a.doctor?.name || "—",
   }))});
 });
 api.post("/patients", requireAuth, requireRoles("atendente", "admin", "medico"), async (req, res) => {
@@ -110,10 +123,15 @@ api.patch("/appointments/:id", requireAuth, async (req, res) => {
   await audit(req.user, "appointment.update", a.id, { status: req.body.status });
   res.json({ ok: true });
 });
-api.get("/queue/today", requireAuth, requireRoles("medico"), async (req, res) => {
+api.get("/queue/today", requireAuth, async (req, res) => {
+  if (!["medico", "atendente", "admin"].includes(req.user.role)) {
+    return res.status(403).json({ detail: "Acesso negado" });
+  }
   const start = new Date(); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
-  const appts = await prisma.appointment.findMany({ where: { doctorId: req.user.id, scheduledAt: { gte: start, lt: end } }, include: { patient: true } });
+  const where = { scheduledAt: { gte: start, lt: end } };
+  if (req.user.role === "medico") where.doctorId = req.user.id;
+  const appts = await prisma.appointment.findMany({ where, include: { patient: true } });
   const order = { urgente: 0, preferencial: 1, normal: 2 };
   appts.sort((a, b) => (order[a.priority] - order[b.priority]) || (a.scheduledAt - b.scheduledAt));
   res.json(appts.map(toAppt));
@@ -124,12 +142,23 @@ api.get("/prescriptions", requireAuth, async (req, res) => {
   if (req.query.patient_id) where.patientId = req.query.patient_id;
   else if (req.user.role === "medico") where.doctorId = req.user.id;
   const ps = await prisma.prescription.findMany({ where, orderBy: { createdAt: "desc" } });
-  res.json(ps.map(r => ({
-    id: r.id, patient_id: r.patientId, medication: r.medication, active_substance: r.activeSubstance,
-    dosage: r.dosage, frequency: r.frequency, doctor_name: r.doctorName,
-    validation_code: r.validationCode, active: r.active,
-    schedule: JSON.parse(r.schedule), adherence_logs: JSON.parse(r.adherenceLogs),
-  })));
+  res.json(ps.map(toPrescription));
+});
+api.post("/prescriptions/:id/adherence", requireAuth, async (req, res) => {
+  const prescription = await prisma.prescription.findUnique({ where: { id: req.params.id } });
+  if (!prescription) return res.status(404).json({ detail: "Receita não encontrada" });
+  const current = parseJson(prescription.adherenceLogs, []);
+  current.push({
+    timestamp: new Date().toISOString(),
+    status: req.body.status || "taken",
+    note: req.body.note || "Confirmado pelo profissional",
+  });
+  const updated = await prisma.prescription.update({
+    where: { id: prescription.id },
+    data: { adherenceLogs: JSON.stringify(current) },
+  });
+  await audit(req.user, "prescription.adherence", updated.id, { status: req.body.status || "taken" });
+  res.json({ ok: true, adherence_logs: parseJson(updated.adherenceLogs, []) });
 });
 api.post("/prescriptions", requireAuth, requireRoles("medico"), async (req, res) => {
   const { patient_id, active_substance, justification } = req.body;
@@ -208,6 +237,7 @@ api.get("/vacancies/active", requireAuth, async (req, res) => {
 
 api.get("/dashboard/secretario", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
   const all = await prisma.appointment.findMany();
+  const recentActivity = await prisma.auditLog.findMany({ orderBy: { timestamp: "desc" }, take: 8 });
   const totalAppts = all.length;
   const faltas = all.filter(a => a.status === "faltou").length;
   const compareceu = all.filter(a => a.status === "compareceu").length;
@@ -246,6 +276,7 @@ api.get("/dashboard/secretario", requireAuth, requireRoles("secretario", "admin"
     med_demand: Object.entries(medMap).map(([m, c]) => ({ medication: m, patients: c })).sort((a, b) => b.patients - a.patients).slice(0, 8),
     unit_ranking: Object.entries(byUnit).map(([u, v]) => ({ unit: u, total: v.total, absenteeism: v.total ? +(v.faltas / v.total * 100).toFixed(1) : 0 })).sort((a, b) => a.absenteeism - b.absenteeism),
     weekly_trend: weekly,
+    recent_activity: recentActivity.map((item) => ({ id: item.id, action: item.action, target: item.target, user_name: item.userName, timestamp: item.timestamp.toISOString() })),
   });
 });
 api.get("/audit-logs", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {

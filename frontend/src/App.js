@@ -47,9 +47,10 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
 
-            <Route element={<Protected roles={["medico"]}><AppLayout /></Protected>}>
+            <Route element={<Protected roles={["medico", "atendente"]}><AppLayout /></Protected>}>
               <Route path="/medico" element={<MedicoDashboard />} />
               <Route path="/medico/paciente/:id" element={<Prontuario />} />
+              <Route path="/atendente/fila" element={<MedicoDashboard />} />
             </Route>
 
             <Route element={<Protected roles={["atendente"]}><AppLayout /></Protected>}>

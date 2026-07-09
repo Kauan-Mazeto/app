@@ -37,6 +37,7 @@ export default function Prontuario() {
   const [sigtap, setSigtap] = useState([]);
   const [pickedExams, setPickedExams] = useState([]);
   const [prep, setPrep] = useState("");
+  const [busyAdherenceId, setBusyAdherenceId] = useState(null);
   const nav = useNavigate();
 
   const loadPatient = async () => {
@@ -45,7 +46,10 @@ export default function Prontuario() {
       setP(data);
       const pr = await api.get(`/prescriptions?patient_id=${id}`);
       setPrescs(pr.data);
-    } catch (e) { toast.error("Erro ao carregar paciente"); }
+    } catch (e) { 
+      toast.error("Erro ao carregar paciente");
+      setPrescs([]); 
+    }
   };
   const loadRefs = async () => {
     const { data } = await api.get("/refs/sigtap");
@@ -62,7 +66,15 @@ export default function Prontuario() {
     } catch {}
   };
 
-  useEffect(() => { if (apptId) startConsult(); }, [apptId]);
+  useEffect(() => { 
+    try {
+       if (apptId) {
+        startConsult(); 
+       }
+    } catch {
+      return []
+    }
+  }, [apptId]);
 
   const savePrescription = async () => {
     try {
@@ -103,6 +115,26 @@ export default function Prontuario() {
       toast.success(`${pickedExams.length} exame(s) solicitado(s)`);
       setShowExam(false); setPickedExams([]); setPrep("");
     } catch { toast.error("Erro ao solicitar exames"); }
+  };
+
+  const confirmMedicationDose = async (prescriptionId) => {
+    setBusyAdherenceId(prescriptionId);
+    try {
+      const { data } = await api.post(`/prescriptions/${prescriptionId}/adherence`, { status: "taken", note: "Tomada confirmada no sistema" });
+      setPrescs((prev) => prev.map((item) => item.id === prescriptionId ? { ...item, adherence_logs: data.adherence_logs } : item));
+      toast.success("Tomada registrada");
+    } catch {
+      toast.error("Erro ao registrar tomada");
+    } finally {
+      setBusyAdherenceId(null);
+    }
+  };
+
+  const getAdherenceStats = (rx) => {
+    const logs = Array.isArray(rx.adherence_logs) ? rx.adherence_logs : [];
+    const taken = logs.filter((entry) => entry?.status === "taken").length;
+    const target = Math.max((rx.schedule?.length || 1) * 7, 1);
+    return { taken, target, percent: Math.min(100, Math.round((taken / target) * 100)) };
   };
 
   if (!p) return <div className="p-8 text-slate-400">Carregando prontuário...</div>;
@@ -153,35 +185,64 @@ export default function Prontuario() {
         <div className="sc-card">
           <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">Medicamentos em uso</h2>
           <div className="space-y-3">
-            {prescs.filter(x => x.active).map((r) => (
-              <div key={r.id} className="border border-slate-200 rounded-lg p-4 flex justify-between items-start">
-                <div>
-                  <div className="font-semibold text-[#1D3557]">{r.medication}</div>
-                  <div className="text-xs text-slate-500">{r.active_substance} · {r.dosage} · {r.frequency}</div>
-                  <div className="text-xs text-slate-400 mt-1">Prescrito por {r.doctor_name} · {r.validation_code}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs overline">Adesão (últimos 7 dias)</div>
-                  <div className="font-mono-nums font-bold text-[#1E4620]">
-                    <CheckCircle2 className="w-4 h-4 inline mr-1" />
-                    {r.adherence_logs?.length || 0} / {(r.schedule?.length || 1) * 7}
+            {prescs.filter(x => x.active).map((r) => {
+              const stats = getAdherenceStats(r);
+              return (
+                <div key={r.id} className="border border-slate-200 rounded-lg p-4 flex justify-between items-start gap-4">
+                  <div>
+                    <div className="font-semibold text-[#1D3557]">{r.medication}</div>
+                    <div className="text-xs text-slate-500">{r.active_substance} · {r.dosage} · {r.frequency}</div>
+                    <div className="text-xs text-slate-400 mt-1">Prescrito por {r.doctor_name} · {r.validation_code}</div>
+                  </div>
+                  <div className="text-right flex flex-col gap-2">
+                    <div>
+                      <div className="text-xs overline">Adesão (últimos 7 dias)</div>
+                      <div className="font-mono-nums font-bold text-[#1E4620]">
+                        <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                        {stats.taken} / {stats.target}
+                      </div>
+                      <div className="text-[11px] text-slate-500">{stats.percent}% confirmada</div>
+                    </div>
+                    <button
+                      onClick={() => confirmMedicationDose(r.id)}
+                      disabled={busyAdherenceId === r.id}
+                      className="text-xs px-3 py-1.5 rounded-md bg-[#1D3557] text-white font-semibold hover:bg-[#152742] disabled:opacity-50"
+                    >
+                      {busyAdherenceId === r.id ? "Salvando..." : "Registrar tomada"}
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {prescs.filter(x => x.active).length === 0 && (
               <div className="text-sm text-slate-400 text-center py-8">Nenhum medicamento ativo.</div>
             )}
           </div>
 
-          <h2 className="font-display font-bold text-lg text-[#1D3557] mt-6 mb-3">Histórico</h2>
+          <h2 className="font-display font-bold text-lg text-[#1D3557] mt-6 mb-3">Histórico de medicamentos</h2>
           <div className="space-y-2">
             {prescs.filter(x => !x.active).slice(0, 6).map(r => (
               <div key={r.id} className="text-sm border-l-2 border-slate-200 pl-3 py-1">
                 <span className="font-semibold text-slate-700">{r.medication}</span>
-                <span className="text-slate-500"> — encerrado ({r.superseded_at?.slice(0, 10) || "—"})</span>
+                <span className="text-slate-500"> — encerrado ({(r.created_at || "").slice(0, 10)})</span>
               </div>
             ))}
+            {prescs.filter(x => !x.active).length === 0 && (
+              <div className="text-sm text-slate-400">Nenhum medicamento encerrado.</div>
+            )}
+          </div>
+
+          <h2 className="font-display font-bold text-lg text-[#1D3557] mt-6 mb-3">Histórico de consultas</h2>
+          <div className="space-y-2">
+            {(p.appointments_history || []).slice(0, 8).map((appt) => (
+              <div key={appt.id} className="text-sm border-l-2 border-slate-200 pl-3 py-1">
+                <span className="font-semibold text-slate-700">{new Date(appt.scheduled_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
+                <span className="text-slate-500"> — {appt.specialty} · {appt.status} · {appt.doctor_name}</span>
+              </div>
+            ))}
+            {(p.appointments_history || []).length === 0 && (
+              <div className="text-sm text-slate-400">Nenhuma consulta registrada.</div>
+            )}
           </div>
         </div>
       )}

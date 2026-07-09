@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Activity, Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell } from "lucide-react";
+import { Activity, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell, Pill, Package, Clock } from "lucide-react";
 
 const navByRole = {
   medico: [
