@@ -354,6 +354,13 @@ api.get("/exams", requireAuth, async (req, res) => {
   const where = {};
   if (req.query.status) where.status = req.query.status;
   if (req.query.patient_id) where.patientId = req.query.patient_id;
+  if (req.query.q) {
+    const q = req.query.q.trim();
+    where.OR = [
+      { lab_externo: { contains: q } },
+      { patient: { name: { contains: q } } },
+    ];
+  }
   const exams = await prisma.exam.findMany({
     where,
     include: { patient: true },
@@ -367,6 +374,7 @@ api.get("/exams", requireAuth, async (req, res) => {
       urgent: e.urgent,
       preparation_notes: e.preparationNotes,
       patient_id: e.patientId,
+      lab_externo: e.lab_externo,
       created_at: e.createdAt.toISOString(),
       delivered_at: e.deliveredAt?.toISOString(),
       patient: { name: e.patient.name, cpf: e.patient.cpf },
@@ -374,8 +382,14 @@ api.get("/exams", requireAuth, async (req, res) => {
   );
 });
 api.post("/exams", requireAuth, requireRoles("medico"), async (req, res) => {
+  const isExternal = !!req.body.external;
+  if (isExternal && !String(req.body.lab_externo || "").trim())
+    return res
+      .status(400)
+      .json({ detail: "Informe o nome do laboratório externo" });
   const created = [];
   for (const ex of req.body.exams) {
+    const labValue = isExternal ? req.body.lab_externo || null : null;
     created.push(
       await prisma.exam.create({
         data: {
@@ -383,6 +397,7 @@ api.post("/exams", requireAuth, requireRoles("medico"), async (req, res) => {
           exam: ex,
           preparationNotes: req.body.preparation_notes,
           urgent: !!req.body.urgent,
+          lab_externo: labValue,
           requestedById: req.user.id,
         },
       }),
@@ -390,6 +405,7 @@ api.post("/exams", requireAuth, requireRoles("medico"), async (req, res) => {
   }
   await audit(req.user, "exam.request", req.body.patient_id, {
     count: created.length,
+    external: isExternal,
   });
   res.json(created);
 });
@@ -467,25 +483,31 @@ api.get(
       orderBy: { timestamp: "desc" },
       take: 8,
     });
+    
     const totalAppts = all.length;
     const faltas = all.filter((a) => a.status === "faltou").length;
     const compareceu = all.filter((a) => a.status === "compareceu").length;
-    const bySpec = {},
-      byUnit = {};
+    
+    const bySpec = {}, byUnit = {};
     for (const a of all) {
       bySpec[a.specialty] ??= { total: 0, faltas: 0 };
       bySpec[a.specialty].total++;
       if (a.status === "faltou") bySpec[a.specialty].faltas++;
+      
       byUnit[a.unit] ??= { total: 0, faltas: 0 };
       byUnit[a.unit].total++;
       if (a.status === "faltou") byUnit[a.unit].faltas++;
     }
+    
     const prescs = await prisma.prescription.findMany({
       where: { active: true },
     });
+    
     const medMap = {};
-    for (const p of prescs)
+    for (const p of prescs) {
       medMap[p.medication] = (medMap[p.medication] || 0) + 1;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekly = [];
@@ -505,6 +527,7 @@ api.get(
         compareceu: dayAppts.length - f,
       });
     }
+
     const scores = Array.from(
       { length: 50 },
       () => 6 + Math.floor(Math.random() * 5),
@@ -515,22 +538,15 @@ api.get(
         scores.length) *
         100,
     );
+
     res.json({
       kpis: {
         total_patients: await prisma.patient.count(),
         total_appointments: totalAppts,
-        absenteeism_rate: totalAppts
-          ? +((faltas / totalAppts) * 100).toFixed(1)
-          : 0,
-        adherence_rate: totalAppts
-          ? +((compareceu / totalAppts) * 100).toFixed(1)
-          : 0,
-        exams_pending: await prisma.exam.count({
-          where: { status: "pendente" },
-        }),
-        exams_abandoned: await prisma.exam.count({
-          where: { status: "pronto" },
-        }),
+        absenteeism_rate: totalAppts ? +((faltas / totalAppts) * 100).toFixed(1) : 0,
+        adherence_rate: totalAppts ? +((compareceu / totalAppts) * 100).toFixed(1) : 0,
+        exams_pending: await prisma.exam.count({ where: { status: "pendente" } }),
+        exams_abandoned: await prisma.exam.count({ where: { status: "pronto" } }),
         total_prescriptions: await prisma.prescription.count(),
         nps,
       },
@@ -562,28 +578,110 @@ api.get(
     });
   },
 );
-api.get(
-  "/audit-logs",
-  requireAuth,
-  requireRoles("secretario", "admin"),
-  async (req, res) => {
-    const logs = await prisma.auditLog.findMany({
-      orderBy: { timestamp: "desc" },
-      take: 200,
+
+/* ==========================================
+   MÓDULO DE CONTROLE DE ESTOQUE (MEDICAMENTOS)
+   ========================================== */
+
+api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res) => {
+  const user = req.user;
+  if (!user.healthUnitId) {
+    return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
+  }
+
+  const medicineId = req.body.medicine_id;
+  const qty = Number(req.body.quantity || 0);
+
+  if (!medicineId || qty <= 0) {
+    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
+  }
+
+  let stock = await prisma.medicineStock.findFirst({
+    where: { healthUnitId: user.healthUnitId, medicineId }
+  });
+
+  if (stock) {
+    stock = await prisma.medicineStock.update({
+      where: { id: stock.id },
+      data: { quantity: { increment: qty } }
     });
-    res.json(
-      logs.map((l) => ({
-        id: l.id,
-        action: l.action,
-        target: l.target,
-        user_name: l.userName,
-        user_role: l.userRole,
-        timestamp: l.timestamp.toISOString(),
-        details: JSON.parse(l.details),
-      })),
-    );
-  },
-);
+  } else {
+    stock = await prisma.medicineStock.create({
+      data: { healthUnitId: user.healthUnitId, medicineId, quantity: qty }
+    });
+  }
+
+  await prisma.stockTransaction.create({
+    data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "ENTRY", quantity: qty }
+  });
+
+  res.json({ ok: true, stock });
+});
+
+api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res) => {
+  const user = req.user;
+  if (!user.healthUnitId) {
+    return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
+  }
+
+  const medicineId = req.body.medicine_id;
+  const qty = Number(req.body.quantity || 0);
+
+  if (!medicineId || qty <= 0) {
+    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
+  }
+
+  const stock = await prisma.medicineStock.findFirst({
+    where: { healthUnitId: user.healthUnitId, medicineId }
+  });
+
+  if (!stock || stock.quantity < qty) {
+    return res.status(400).json({ detail: "Estoque insuficiente" });
+  }
+
+  const updated = await prisma.medicineStock.update({
+    where: { id: stock.id },
+    data: { quantity: { decrement: qty } }
+  });
+
+  await prisma.stockTransaction.create({
+    data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "EXIT", quantity: qty }
+  });
+
+  res.json({ ok: true, stock: updated });
+});
+
+api.get("/secretario/dashboard-stock", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
+  const units = await prisma.healthUnit.findMany({ include: { stocks: true } });
+  const out = units.map(u => ({
+    id: u.id,
+    name: u.name,
+    stocks: u.stocks.map(s => ({ medicineId: s.medicineId, quantity: s.quantity }))
+  }));
+  res.json(out);
+});
+
+/* ==========================================
+   ROTA DE AUDITORIA DE SISTEMA
+   ========================================== */
+api.get("/audit-logs", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
+  const logs = await prisma.auditLog.findMany({
+    orderBy: { timestamp: "desc" },
+    take: 200,
+  });
+
+  res.json(
+    logs.map((l) => ({
+      id: l.id,
+      action: l.action,
+      target: l.target,
+      user_name: l.userName,
+      user_role: l.userRole,
+      timestamp: l.timestamp.toISOString(),
+      details: l.details ? JSON.parse(l.details) : {},
+    })),
+  );
+});
 
 const CID = [
   { code: "I10", desc: "Hipertensão essencial" },

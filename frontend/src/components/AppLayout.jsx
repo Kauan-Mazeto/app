@@ -1,13 +1,34 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Activity, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell, Pill, Package, Clock } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  ShieldCheck,
+  LogOut,
+  LayoutDashboard,
+  UserCog,
+  Search,
+  Bell,
+  Pill,
+  Package,
+  Clock,
+  Users,
+  Calendar,
+  FileText,
+  ListChecks
+} from "lucide-react";
 
 const navByRole = {
   medico: [
     { to: "/medico", label: "Fila do Dia", icon: LayoutDashboard, end: true },
   ],
   atendente: [
-    { to: "/atendente", label: "Agenda & Pacientes", icon: LayoutDashboard, end: true },
+    {
+      to: "/atendente",
+      label: "Agenda & Pacientes",
+      icon: LayoutDashboard,
+      end: true,
+    },
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
@@ -16,9 +37,7 @@ const navByRole = {
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
   ],
-  admin: [
-    { to: "/admin", label: "Profissionais", icon: UserCog, end: true },
-  ],
+  admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
 
 const roleLabel = {
@@ -43,12 +62,12 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
         <div className="px-6 py-6 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-[#E9C46A]" strokeWidth={2.5} />
-            <div>
-              <div className="font-display font-extrabold text-lg tracking-tight">SaúdeConecta</div>
-              <div className="text-[11px] uppercase tracking-widest text-white/60">SUS · ERP</div>
-            </div>
+          <div className="flex items-center">
+            <img
+              src="/logoProjeto.png"
+              alt="Saúde na palma da mão"
+              className="h-20 w-auto object-contain"
+            />
           </div>
         </div>
 
@@ -61,7 +80,9 @@ export default function AppLayout() {
                 to={l.to}
                 end={l.end}
                 data-testid={`nav-${l.to.replace(/\//g, "-")}`}
-                className={({ isActive }) => `sc-nav-link ${isActive ? "active" : ""}`}
+                className={({ isActive }) =>
+                  `sc-nav-link ${isActive ? "active" : ""}`
+                }
               >
                 <Icon className="w-4 h-4" />
                 <span>{l.label}</span>
@@ -72,7 +93,9 @@ export default function AppLayout() {
 
         <div className="p-4 border-t border-white/10">
           <div className="text-sm font-semibold">{user.name}</div>
-          <div className="text-xs text-white/60 mb-3">{roleLabel[user.role]}</div>
+          <div className="text-xs text-white/60 mb-3">
+            {roleLabel[user.role]}
+          </div>
           <button
             data-testid="logout-btn"
             onClick={handleLogout}
