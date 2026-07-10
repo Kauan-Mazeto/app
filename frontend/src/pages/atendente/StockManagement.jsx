@@ -305,55 +305,80 @@ export default function StockManagement({ initialTab = "entry", mode = "atendent
         </p>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${isActive ? "bg-[#1D3557] text-white" : "bg-white text-[#1D3557] border border-slate-200"}`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="grid md:grid-cols-[220px_1fr] gap-6">
+        {/* Lateral: painel Estoque com opções */}
+        <aside className="sc-card p-4">
+          <div className="mb-4">
+            <div className="overline text-[#457B9D]">Estoque</div>
+            <h2 className="font-display text-lg font-bold text-[#1D3557]">Controle de estoque</h2>
+            <p className="text-sm text-slate-500 mt-2">Escolha a operação dentro do painel.</p>
+          </div>
 
-      {activeTab === "entry" && (
-        <div className="sc-card p-6">
-          {renderForm(
-            "entry",
-            entryForm,
-            updateEntryForm,
-            "Registrar entrada",
-            "Cadastre o recebimento de medicamentos e mantenha o histórico da movimentação.",
-            "Registrar Entrada",
-            submitEntry,
-            "btn-primary"
+          {!isSecretaryView && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setActiveTab("entry")}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${activeTab === "entry" ? "bg-[#1D3557] text-white" : "bg-white text-[#1D3557] border border-slate-200"}`}
+              >
+                <ArrowUpCircle className="w-4 h-4" /> Entrada
+              </button>
+              <button
+                onClick={() => setActiveTab("exit")}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${activeTab === "exit" ? "bg-amber-600 text-white" : "bg-white text-[#1D3557] border border-slate-200"}`}
+              >
+                <ArrowDownCircle className="w-4 h-4" /> Saída
+              </button>
+              <button
+                onClick={() => setActiveTab("stock")}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${activeTab === "stock" ? "bg-[#1D3557] text-white" : "bg-white text-[#1D3557] border border-slate-200"}`}
+              >
+                <Boxes className="w-4 h-4" /> Saldo / Histórico
+              </button>
+            </div>
           )}
-        </div>
-      )}
 
-      {activeTab === "exit" && (
-        <div className="sc-card p-6">
-          {renderForm(
-            "exit",
-            exitForm,
-            updateExitForm,
-            "Registrar saída",
-            "Registre a entrega de medicamentos e atualize o estoque automaticamente.",
-            "Confirmar Saída",
-            submitExit,
-            "btn-primary bg-amber-600 hover:bg-amber-700"
+          {isSecretaryView && (
+            <div className="mt-2">
+              <button className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold bg-white text-[#1D3557] border border-slate-200">
+                <Boxes className="w-4 h-4" /> Ver estoque
+              </button>
+            </div>
           )}
-        </div>
-      )}
+        </aside>
 
-      {activeTab === "stock" && (
-        <div className="space-y-6">
+        <div>
+          {activeTab === "entry" && (
+            <div className="sc-card p-6">
+              {renderForm(
+                "entry",
+                entryForm,
+                updateEntryForm,
+                "Registrar entrada",
+                "Cadastre o recebimento de medicamentos e mantenha o histórico da movimentação.",
+                "Registrar Entrada",
+                submitEntry,
+                "btn-primary"
+              )}
+            </div>
+          )}
+
+          {activeTab === "exit" && (
+            <div className="sc-card p-6">
+              {renderForm(
+                "exit",
+                exitForm,
+                updateExitForm,
+                "Registrar saída",
+                "Registre a entrega de medicamentos e atualize o estoque automaticamente.",
+                "Confirmar Saída",
+                submitExit,
+                "btn-primary bg-amber-600 hover:bg-amber-700"
+              )}
+            </div>
+          )}
+
+          {activeTab === "stock" && (
+            <div className="space-y-6">
           <div className="sc-card p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
