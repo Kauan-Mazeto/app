@@ -17,11 +17,13 @@ import {
   FileText,
   ListChecks,
   Brain,
+  MessageSquare,
 } from "lucide-react";
 
 const navByRole = {
   medico: [
     { to: "/medico", label: "Fila do Dia", icon: LayoutDashboard, end: true },
+    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
   ],
   atendente: [
     {
@@ -33,18 +35,21 @@ const navByRole = {
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
-    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
+    { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
     { to: "/atendente/estoque/entrada", label: "Estoque · Entrada", icon: Pill },
     { to: "/atendente/estoque/saida", label: "Estoque · Dispensação", icon: Pill },
   ],
   secretario: [
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
+    { to: "/secretario/feedbacks", label: "Feedbacks", icon: MessageSquare },
     { to: "/secretario/estoque", label: "Estoque por Unidade", icon: Pill },
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
-    { to: "/secretario/ia", label: "Previsao por IA", icon: Brain},
+    { to: "/secretario/ia", label: "Previsão por IA", icon: Brain },
   ],
-  admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
+  admin: [
+    { to: "/admin", label: "Profissionais", icon: UserCog, end: true },
+  ],
 };
 
 const roleLabel = {

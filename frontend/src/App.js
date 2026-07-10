@@ -18,6 +18,7 @@ import StockDashboard from "@/pages/secretario/StockDashboard";
 import ConfiguracaoVagas from "@/pages/atendente/ConfiguracaoVagas";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import PrevisaoIa from "@/pages/secretario/PrevisaoIa";
+import Feedbacks from "@/pages/secretario/Feedbacks";
 import "./App.css";
 
 
@@ -57,30 +58,30 @@ function App() {
               <Route path="/medico" element={<MedicoDashboard />} />
               <Route path="/medico/paciente/:id" element={<Prontuario />} />
               <Route path="/atendente/fila" element={<MedicoDashboard />} />
+              <Route path="/atendente/refs" element={<BuscadorRefs />} />
             </Route>
 
             <Route element={<Protected roles={["atendente"]}><AppLayout /></Protected>}>
               <Route path="/atendente" element={<AtendenteDashboard />} />
               <Route path="/atendente/vagas" element={<VagasOciosas />} />
               <Route path="/atendente/exames" element={<EntregaExames />} />
-              <Route path="/atendente/refs" element={<BuscadorRefs />} />
               <Route path="/atendente/estoque/entrada" element={<StockEntry />} />
               <Route path="/atendente/estoque/saida" element={<Dispense />} />
             </Route>
 
             <Route element={<Protected roles={["secretario"]}><AppLayout /></Protected>}>
-              <Route path="/secretario" element={<SecretarioDashboard />} />
-              <Route path="/secretario/auditoria" element={<Auditoria />} />
-              <Route path="/secretario/estoque" element={<StockDashboard />} />
-              <Route path="/secretario/ia" element={<PrevisaoIa />} />
-            </Route>
+  <Route path="/secretario" element={<SecretarioDashboard />} />
+  <Route path="/secretario/auditoria" element={<Auditoria />} />
+  <Route path="/secretario/estoque" element={<StockDashboard />} />
+  <Route path="/secretario/ia" element={<PrevisaoIa />} />
+  <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
+</Route>
 
-            {/* Configuração de vagas online x presencial: acessível tanto pelo
-                atendente (onde vive o arquivo/fluxo de agendamento) quanto
-                pelo secretário (que também precisa enxergar/ajustar a config). */}
-            <Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
-              <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
-            </Route>
+{/* Configuração de vagas online x presencial: acessível tanto pelo
+    atendente quanto pelo secretário */}
+<Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
+  <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
+</Route>
 
             <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>
               <Route path="/admin" element={<AdminDashboard />} />
