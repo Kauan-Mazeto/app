@@ -13,6 +13,7 @@ import BuscadorRefs from "@/pages/atendente/BuscadorRefs";
 import SecretarioDashboard from "@/pages/secretario/SecretarioDashboard";
 import Auditoria from "@/pages/secretario/Auditoria";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import Feedbacks from "@/pages/secretario/Feedbacks";
 import "./App.css";
 
 const rolePath = {
@@ -62,6 +63,7 @@ function App() {
             <Route element={<Protected roles={["secretario"]}><AppLayout /></Protected>}>
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
+              <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 
             <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>

@@ -1,6 +1,9 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Activity, Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck, LogOut, LayoutDashboard, UserCog, Search, Bell } from "lucide-react";
+import {
+  Activity, Users, Calendar, FileText, Package, ListChecks, BarChart3, ShieldCheck,
+  LogOut, LayoutDashboard, UserCog, Search, Bell, MessageSquare
+} from "lucide-react";
 
 const navByRole = {
   medico: [
@@ -16,6 +19,7 @@ const navByRole = {
   secretario: [
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
+    { to: "/secretario/feedbacks", label: "Feedbacks", icon: MessageSquare }
   ],
   admin: [
     { to: "/admin", label: "Profissionais", icon: UserCog, end: true },

@@ -27,9 +27,9 @@ export default function Auditoria() {
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-6 flex justify-between items-end">
         <div>
-          <div className="overline text-[#457B9D]">Log imutável</div>
+          <div className="overline text-[#457B9D]">Logs imutável</div>
           <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Auditoria</h1>
-          <p className="text-slate-500 mt-1">Todas as ações críticas do sistema (receitas, faltas, bloqueios).</p>
+          <p className="text-slate-500 mt-1">Todas as ações executadas no sistema.</p>
         </div>
         <button data-testid="export-csv" onClick={exportCsv} className="bg-white border border-slate-200 px-4 py-2 rounded-md text-sm font-semibold text-[#1D3557]">
           <Download className="w-4 h-4 inline mr-1" /> Exportar CSV

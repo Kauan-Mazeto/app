@@ -29,19 +29,16 @@ export default function SecretarioDashboard() {
           <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Painel de Indicadores</h1>
           <p className="text-slate-500 mt-1">Visão consolidada da rede municipal.</p>
         </div>
-        <Link data-testid="link-auditoria" to="/secretario/auditoria" className="text-sm font-semibold text-[#1D3557] hover:underline">
-          Auditoria de Receitas →
-        </Link>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Kpi label="Pacientes ativos" value={k.total_patients} icon={Users} />
         <Kpi label="Adesão" value={`${k.adherence_rate}%`} icon={Heart} accent="#1E4620" />
-        <Kpi label="Absenteísmo" value={`${k.absenteeism_rate}%`} icon={AlertTriangle} accent="#E76F51" />
-        <Kpi label="NPS" value={k.nps} icon={TrendingUp} accent="#457B9D" />
+        <Kpi label="Índice de faltas" value={`${k.absenteeism_rate}%`} icon={AlertTriangle} accent="#E76F51" />
+        <Kpi label="Índice de Satisfação" value={k.nps} icon={TrendingUp} accent="#457B9D" />
         <Kpi label="Receitas emitidas" value={k.total_prescriptions} icon={Pill} />
-        <Kpi label="Consultas totais" value={k.total_appointments} icon={Users} />
+        <Kpi label="Total de consultas" value={k.total_appointments} icon={Users} />
         <Kpi label="Exames pendentes" value={k.exams_pending} icon={Package} accent="#E9C46A" />
         <Kpi label="Exames p/ retirar" value={k.exams_abandoned} icon={Package} accent="#E76F51" />
       </div>
@@ -60,7 +57,7 @@ export default function SecretarioDashboard() {
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Compareceu × Faltou (histórico)">
+        <Card title="Comparecimento × Faltas">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={attendData} dataKey="value" nameKey="name" outerRadius={90} innerRadius={55} paddingAngle={2}>
@@ -74,7 +71,7 @@ export default function SecretarioDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        <Card title="Previsão de demanda de medicamentos">
+        <Card title="Previsão de demanda de medicamentos com base no consumo mensal">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={d.med_demand} layout="vertical" margin={{ left: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -86,7 +83,7 @@ export default function SecretarioDashboard() {
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Mapa de gargalos · Absenteísmo por especialidade">
+        <Card title="Mapa de gargalos por especialidade">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={d.by_specialty}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -99,10 +96,10 @@ export default function SecretarioDashboard() {
         </Card>
       </div>
 
-      <Card title="Ranking de unidades por eficiência (menor absenteísmo)">
+      <Card title="Ranking de unidades de saúde por eficiência no atendimento">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="text-left py-2">#</th><th className="text-left py-2">Unidade</th><th className="text-left py-2">Consultas</th><th className="text-left py-2">Absenteísmo</th></tr>
+            <tr><th className="text-left py-2">#</th><th className="text-left py-2">Unidade</th><th className="text-left py-2">Consultas</th><th className="text-left py-2">Porcentagem de faltas</th></tr>
           </thead>
           <tbody>
             {d.unit_ranking.map((u, i) => (

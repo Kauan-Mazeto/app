@@ -45,19 +45,19 @@ export default function Login() {
       <div className="hidden lg:flex flex-col justify-between bg-[#1D3557] text-white p-14">
         <Link to="/" className="flex items-center gap-2">
           <Activity className="w-6 h-6 text-[#E9C46A]" />
-          <span className="font-display font-extrabold text-lg">SaúdeConecta</span>
+          <span className="font-display font-extrabold text-lg">Saúde Na Palma Da Mão</span>
         </Link>
         <div>
-          <div className="overline text-white/60 mb-3">Rede Municipal · SUS</div>
           <h2 className="font-display font-extrabold text-4xl leading-tight tracking-tight max-w-md">
-            Acompanhamento clínico com validade jurídica e transparência.
+            Mais 
+            <span className="text-[#E9C46A]"> eficiência</span> para a equipe. Melhor <span className="text-[#E9C46A]">atendimento</span> para o cidadão.
           </h2>
           <p className="text-white/70 mt-6 max-w-sm">
-            Painel de fila unificada, receitas digitais Gov.br e indicadores de gestão em tempo real.
+            Acesse a plataforma integrada para gerenciar desde as filas do dia a dia em tempo real até o acompanhamento da evolução dos pacientes do município.
           </p>
         </div>
         <div className="text-xs text-white/50">
-          © {new Date().getFullYear()} SaúdeConecta · MVP demonstrativo
+          © {new Date().getFullYear()} Saúde Na Palma Da Mão · MVP demonstrativo
         </div>
       </div>
 
@@ -114,7 +114,6 @@ export default function Login() {
                 </button>
               ))}
             </div>
-            <div className="text-[11px] text-slate-400 mt-3">Senha: <b>senha123</b> (admin: <b>admin123</b>)</div>
           </div>
         </div>
       </div>
