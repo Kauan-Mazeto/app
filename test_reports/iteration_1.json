@@ -1,5 +1,5 @@
 {
-  "summary": "Smoke tests OK for SaúdeConecta MVP. Landing + login (demo médico e secretário) + fila médico + prontuário + dashboard secretário funcionam. Backend: auth JWT ok, /api/queue/today ok, prescription 409-then-override com justification funciona e retorna validation_code GOVBR-, autorização por perfil bloqueia (atendente→prescription 403, médico→dashboard secretário 403).",
+  "summary": "Smoke tests OK for Saúde na Palma da Mão MVP. Landing + login (demo médico e secretário) + fila médico + prontuário + dashboard secretário funcionam. Backend: auth JWT ok, /api/queue/today ok, prescription 409-then-override com justification funciona e retorna validation_code GOVBR-, autorização por perfil bloqueia (atendente→prescription 403, médico→dashboard secretário 403).",
   "tested_scope": ["frontend", "backend", "auth", "integration"],
   "passed": [
     "GET / landing page 200 com CTA Acessar o sistema",

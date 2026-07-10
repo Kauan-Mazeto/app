@@ -1,4 +1,4 @@
-# SaúdeConecta — PRD
+# Saúde na Palma da Mão — PRD
 
 ## Original Problem Statement
 Sistema web ERP para SUS gerenciando pacientes em tratamento contínuo de medicamentos controlados. Objetivo: reduzir filas, aumentar adesão medicamentosa, dar validade jurídica (Gov.br) a receitas digitais e prover dashboards de gestão pública. 4 perfis: Médico, Atendente, Secretário de Saúde, Admin.

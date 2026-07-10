@@ -67,7 +67,7 @@ export default function Login() {
           </p>
         </div>
         <div className="text-xs text-white/50">
-          © {new Date().getFullYear()} SaúdeConecta · MVP demonstrativo
+          © {new Date().getFullYear()} Saúde na Palma da Mão - Todos os direitos reservados
         </div>
       </div>
 

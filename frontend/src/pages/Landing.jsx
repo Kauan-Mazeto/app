@@ -113,7 +113,7 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        SaúdeConecta · MVP · Sistema municipal de gestão de tratamentos
+        Saúde na Palma da Mão · Sistema municipal de gestão de tratamentos
         contínuos
       </footer>
     </div>
