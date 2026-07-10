@@ -56,7 +56,9 @@ export default function Login() {
         </Link>
 
         <div>
-          <div className="overline text-white/60 mb-3">Rede Municipal · SUS</div>
+          <div className="overline text-white/60 mb-3">
+            Rede Municipal · SUS
+          </div>
           <h2 className="font-display font-extrabold text-4xl leading-tight tracking-tight max-w-md">
             Acompanhamento clínico com validade jurídica e transparência.
           </h2>
@@ -66,19 +68,28 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="text-xs text-white/50">© {new Date().getFullYear()} Saúde na Palma da Mão - Todos os direitos reservados</div>
+        <div className="text-xs text-white/50">
+          © {new Date().getFullYear()} Saúde na Palma da Mão - Todos os direitos
+          reservados
+        </div>
       </div>
 
       {/* Right form */}
       <div className="flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-sm">
-          <h1 className="font-display font-extrabold text-3xl text-[#1D3557]">Entrar</h1>
+          <h1 className="font-display font-extrabold text-3xl text-[#1D3557]">
+            Entrar
+          </h1>
 
-          <p className="text-sm text-slate-500 mt-1 mb-8">Acesse com seu email institucional.</p>
+          <p className="text-sm text-slate-500 mt-1 mb-8">
+            Acesse com seu email institucional.
+          </p>
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Email</label>
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Email
+              </label>
               <input
                 data-testid="login-email"
                 type="email"
@@ -90,7 +101,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Senha</label>
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Senha
+              </label>
               <input
                 data-testid="login-password"
                 type="password"
@@ -127,7 +140,9 @@ export default function Login() {
               ))}
             </div>
 
-            <div className="text-[11px] text-slate-400 mt-3">Senha: <b>senha123</b> (admin: <b>admin123</b>)</div>
+            <div className="text-[11px] text-slate-400 mt-3">
+              Senha: <b>senha123</b> (admin: <b>admin123</b>)
+            </div>
           </div>
         </div>
       </div>
