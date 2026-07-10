@@ -4,13 +4,14 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { TrendingUp, Users, AlertTriangle, Heart, Pill, Package } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const COLORS = ["#1D3557", "#457B9D", "#E76F51", "#E9C46A", "#2A9D8F", "#8D99AE"];
-
 export default function SecretarioDashboard() {
   const [d, setD] = useState(null);
+  const [stockMovements, setStockMovements] = useState([]);
+  const [stockView, setStockView] = useState("day");
 
   useEffect(() => {
     api.get("/dashboard/secretario").then(r => setD(r.data));
+    api.get("/stock/transactions").then(r => setStockMovements(r.data));
   }, []);
 
   if (!d) return <div className="p-8 text-slate-400">Carregando indicadores...</div>;
@@ -20,6 +21,53 @@ export default function SecretarioDashboard() {
     { name: "Compareceu", value: k.total_appointments - Math.round(k.total_appointments * k.absenteeism_rate / 100) },
     { name: "Faltas", value: Math.round(k.total_appointments * k.absenteeism_rate / 100) },
   ];
+
+  const stockSeries = (() => {
+    const normalized = stockMovements.map((item) => ({
+      ...item,
+      type: String(item.type || "").toLowerCase(),
+      quantity: Number(item.quantity || 0),
+      createdAt: item.createdAt ? new Date(item.createdAt) : null,
+      unit: item.unit || "Sem unidade",
+    }));
+
+    if (stockView === "unit") {
+      const grouped = {};
+      normalized.forEach((item) => {
+        if (!item.createdAt || Number.isNaN(item.createdAt.getTime())) return;
+        const unit = item.unit || "Sem unidade";
+        grouped[unit] ??= { label: unit, entradas: 0, saidas: 0 };
+        if (item.type === "entry") grouped[unit].entradas += item.quantity;
+        if (item.type === "exit") grouped[unit].saidas += item.quantity;
+      });
+      return Object.values(grouped).sort((a, b) => a.label.localeCompare(b.label));
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now);
+      date.setDate(now.getDate() - (6 - index));
+      return {
+        key: date.toISOString().slice(0, 10),
+        label: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        entradas: 0,
+        saidas: 0,
+      };
+    });
+
+    normalized.forEach((item) => {
+      if (!item.createdAt || Number.isNaN(item.createdAt.getTime())) return;
+      const key = item.createdAt.toISOString().slice(0, 10);
+      const bucket = days.find((day) => day.key === key);
+      if (!bucket) return;
+      if (item.type === "entry") bucket.entradas += item.quantity;
+      if (item.type === "exit") bucket.saidas += item.quantity;
+    });
+
+    return days;
+  })();
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -120,6 +168,36 @@ export default function SecretarioDashboard() {
           </tbody>
         </table>
       </Card>
+
+      <div className="mt-6">
+        <Card title="Fluxo de estoque · Entradas e saídas">
+          <div className="flex justify-end mb-3">
+            <div className="inline-flex rounded-full border border-slate-200 p-1 bg-slate-50">
+              <button type="button" onClick={() => setStockView("day")} className={`rounded-full px-3 py-1 text-xs font-semibold ${stockView === "day" ? "bg-[#1D3557] text-white" : "text-slate-600"}`}>
+                Por dia
+              </button>
+              <button type="button" onClick={() => setStockView("unit")} className={`rounded-full px-3 py-1 text-xs font-semibold ${stockView === "unit" ? "bg-[#1D3557] text-white" : "text-slate-600"}`}>
+                Por unidade
+              </button>
+            </div>
+          </div>
+          {stockSeries.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={stockSeries}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="label" stroke="#64748B" style={{ fontSize: 11 }} />
+                <YAxis stroke="#64748B" style={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="entradas" name="Entradas" fill="#1D3557" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="saidas" name="Saídas" fill="#E76F51" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[280px] flex items-center justify-center text-sm text-slate-500">Ainda não há movimentações de estoque para exibir.</div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

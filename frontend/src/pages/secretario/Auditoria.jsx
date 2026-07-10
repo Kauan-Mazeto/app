@@ -55,6 +55,45 @@ function getReadableSummary(log) {
   }
 }
 
+function formatScheduleDay(value) {
+  const numeric = Number(value);
+  switch (numeric) {
+    case 0:
+      return "Domingo";
+    case 1:
+      return "Segunda";
+    case 2:
+      return "Terça";
+    case 3:
+      return "Quarta";
+    case 4:
+      return "Quinta";
+    case 5:
+      return "Sexta";
+    case 6:
+      return "Sábado";
+    default:
+      return "";
+  }
+}
+
+function formatScheduleDays(days) {
+  if (!Array.isArray(days)) return "";
+
+  const formatted = days
+    .map((day) => {
+      const value = typeof day === "object" && day !== null
+        ? (day.day_of_week ?? day.dayOfWeek ?? day.day ?? day.value)
+        : day;
+      const label = formatScheduleDay(value);
+      if (label) return label;
+      return typeof value === "string" ? value : "";
+    })
+    .filter(Boolean);
+
+  return formatted.join(", ");
+}
+
 function translateFieldName(key) {
   switch (key) {
     case "medicineId":
@@ -89,6 +128,8 @@ function translateFieldName(key) {
       return "Filtro";
     case "valor":
       return "Valor";
+    case "days":
+      return "Dias";
     case "createdAt":
       return "Criado em";
     default:
@@ -96,12 +137,32 @@ function translateFieldName(key) {
   }
 }
 
+function renderDetailValue(value) {
+  if (value == null) return "—";
+  if (Array.isArray(value)) {
+    if (value.every((item) => typeof item === "object" && item !== null)) {
+      return value.map((item) => {
+        const raw = item.day_of_week ?? item.dayOfWeek ?? item.day ?? item.value;
+        return formatScheduleDay(raw) || String(raw ?? item);
+      }).join(", ");
+    }
+    return value.join(", ");
+  }
+  if (typeof value === "object") {
+    if (value.day_of_week != null || value.dayOfWeek != null || value.day != null) {
+      return formatScheduleDays([value]);
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 function getDetailItems(details) {
   if (!details || typeof details !== "object") return [];
   const ignored = ["timestamp", "action", "target", "summary", "message", "user"];
   return Object.entries(details)
     .filter(([key]) => !ignored.includes(key))
-    .map(([key, value]) => [translateFieldName(key), value]);
+    .map(([key, value]) => [translateFieldName(key), renderDetailValue(value)]);
 }
 
 export default function Auditoria() {
