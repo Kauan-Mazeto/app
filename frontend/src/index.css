@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-    /* SaúdeConecta institutional palette */
+    /* Saúde na Palma da Mão institutional palette */
     --sc-bg: 220 20% 96%;
     --sc-surface: 0 0% 100%;
     --sc-primary: 213 47% 23%;       /* #1D3557 Prussian */

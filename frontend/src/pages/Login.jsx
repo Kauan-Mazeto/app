@@ -44,6 +44,7 @@ export default function Login() {
   };
 
   return (
+<<<<<<< HEAD
   <div className="min-h-screen grid lg:grid-cols-2">
     {/* Left panel */}
     <div className="hidden lg:flex flex-col justify-between bg-[#1D3557] text-white p-14">
@@ -58,6 +59,32 @@ export default function Login() {
       <div>
         <div className="overline text-white/60 mb-3">
           Rede Municipal · SUS
+=======
+    <div className="min-h-screen grid lg:grid-cols-2">
+      {/* Left panel */}
+      <div className="hidden lg:flex flex-col justify-between bg-[#1D3557] text-white p-14">
+        <Link to="/" className="inline-flex items-center">
+          <img
+            src="/logoProjeto.png"
+            alt="Saúde na palma da mão"
+            className="h-20 w-auto object-contain"
+          />
+        </Link>
+        <div>
+          <div className="overline text-white/60 mb-3">
+            Rede Municipal · SUS
+          </div>
+          <h2 className="font-display font-extrabold text-4xl leading-tight tracking-tight max-w-md">
+            Acompanhamento clínico com validade jurídica e transparência.
+          </h2>
+          <p className="text-white/70 mt-6 max-w-sm">
+            Painel de fila unificada, receitas digitais Gov.br e indicadores de
+            gestão em tempo real.
+          </p>
+        </div>
+        <div className="text-xs text-white/50">
+          © {new Date().getFullYear()} Saúde na Palma da Mão - Todos os direitos reservados
+>>>>>>> 3b37b68451116ef223610a92153af4241f906b3f
         </div>
 
         <h2 className="font-display font-extrabold text-4xl leading-tight tracking-tight max-w-md">

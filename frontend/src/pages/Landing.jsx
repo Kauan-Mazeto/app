@@ -123,8 +123,13 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+<<<<<<< HEAD
         Saúde Na Palma Da Mão · Sistema integrado usando aplicação mobile e web com o objetivo de reduzir filas e desperdícios de recursos públicos
 
+=======
+        Saúde na Palma da Mão · Sistema municipal de gestão de tratamentos
+        contínuos
+>>>>>>> 3b37b68451116ef223610a92153af4241f906b3f
       </footer>
     </div>
   );

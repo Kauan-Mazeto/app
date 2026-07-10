@@ -91,7 +91,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-[hsl(220,20%,97%)]">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
+      <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col h-screen sticky top-0">
         <div className="px-6 py-6 border-b border-white/10">
           <button type="button" onClick={() => nav(homePath)} className="flex items-center rounded-lg transition hover:opacity-90">
             <img
