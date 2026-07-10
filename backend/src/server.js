@@ -1493,10 +1493,5 @@ process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 
 const port = process.env.PORT || 8001;
 app.listen(port, "0.0.0.0", () =>
-<<<<<<< HEAD
-  console.log(`SaúdeConecta backend em http://0.0.0.0:${port}`),
-);
-=======
   console.log(`Saúde na Palma da Mão -> backend em http://0.0.0.0:${port}`),
 );
->>>>>>> 3b37b68451116ef223610a92153af4241f906b3f
