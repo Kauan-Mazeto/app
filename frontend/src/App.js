@@ -17,7 +17,9 @@ import Auditoria from "@/pages/secretario/Auditoria";
 import StockDashboard from "@/pages/secretario/StockDashboard";
 import ConfiguracaoVagas from "@/pages/atendente/ConfiguracaoVagas";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import PrevisaoIa from "@/pages/secretario/PrevisaoIa";
 import "./App.css";
+
 
 const rolePath = {
   medico: "/medico",
@@ -70,6 +72,7 @@ function App() {
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
               <Route path="/secretario/estoque" element={<StockDashboard />} />
+              <Route path="/secretario/ia" element={<PrevisaoIa />} />
             </Route>
 
             {/* Configuração de vagas online x presencial: acessível tanto pelo

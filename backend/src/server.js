@@ -863,6 +863,202 @@ api.get("/audit-logs", requireAuth, requireRoles("secretario", "admin"), async (
   );
 });
 
+
+/*import { GoogleGenerativeAI } from "@google/generative-ai";
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+api.get("/ai/opcoes", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
+  const [medicamentos, pacientes, medicos, unidades] = await Promise.all([
+    prisma.prescription.findMany({ select: { medication: true }, distinct: ["medication"], orderBy: { medication: "asc" } }),
+    prisma.patient.findMany({ select: { id: true, name: true, cpf: true }, orderBy: { name: "asc" } }),
+    prisma.user.findMany({ where: { role: "medico" }, select: { id: true, name: true, specialty: true }, orderBy: { name: "asc" } }),
+    prisma.appointment.findMany({ select: { unit: true }, distinct: ["unit"], orderBy: { unit: "asc" } }),
+  ]);
+  res.json({
+    medicamentos: medicamentos.map(m => m.medication),
+    pacientes: pacientes.map(p => ({ id: p.id, label: `${p.name} · ${p.cpf}` })),
+    medicos: medicos.map(m => ({ id: m.id, label: `${m.name} · ${m.specialty}` })),
+    unidades: unidades.map(u => u.unit),
+  });
+});
+*/
+//  Código foi comentado por que estava dando problema ao subir para o git. 
+
+api.post("/ai/insights", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
+  const { filtro, valor } = req.body;
+
+  if (!filtro || !valor) return res.status(400).json({ detail: "filtro e valor são obrigatórios" });
+
+  const hoje = new Date();
+  const dozeAtras = new Date(hoje);
+  dozeAtras.setMonth(dozeAtras.getMonth() - 12);
+
+  const ESTACOES = {
+    verao: { meses: [11, 0, 1], label: "Verão (Dez-Jan-Fev)" },
+    outono: { meses: [2, 3, 4], label: "Outono (Mar-Abr-Mai)" },
+    inverno: { meses: [5, 6, 7], label: "Inverno (Jun-Jul-Ago)" },
+    primavera: { meses: [8, 9, 10], label: "Primavera (Set-Out-Nov)" },
+  };
+
+  let contexto = "";
+
+  if (filtro === "estacao") {
+    const estacao = ESTACOES[valor];
+    if (!estacao) return res.status(400).json({ detail: "Estação inválida" });
+
+    const appointments = await prisma.appointment.findMany({
+      where: { scheduledAt: { gte: dozeAtras } },
+      select: { scheduledAt: true, specialty: true, status: true, unit: true },
+    });
+
+    const filtrados = appointments.filter(a => estacao.meses.includes(a.scheduledAt.getMonth()));
+    const porEsp = {};
+    for (const a of filtrados) {
+      porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
+    }
+    const faltas = filtrados.filter(a => a.status === "faltou").length;
+
+    const prescriptions = await prisma.prescription.findMany({
+      where: { createdAt: { gte: dozeAtras } },
+      select: { medication: true, createdAt: true },
+    });
+    const medsFiltrados = prescriptions.filter(p => estacao.meses.includes(p.createdAt.getMonth()));
+    const medMap = {};
+    for (const p of medsFiltrados) medMap[p.medication] = (medMap[p.medication] || 0) + 1;
+    const topMeds = Object.entries(medMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([m, c]) => `${m}:${c}`).join(", ");
+
+    contexto = `Estacao: ${estacao.label}. Total consultas: ${filtrados.length}. Por especialidade: ${JSON.stringify(porEsp)}. Faltas: ${faltas}. Top medicamentos prescritos: ${topMeds}.`;
+  }
+
+  else if (filtro === "medicamento") {
+    const prescriptions = await prisma.prescription.findMany({
+      where: { medication: valor, createdAt: { gte: dozeAtras } },
+      select: { createdAt: true, active: true, patientId: true },
+    });
+
+    const porMes = {};
+    for (const p of prescriptions) {
+      const key = p.createdAt.toISOString().slice(0, 7);
+      porMes[key] = (porMes[key] || 0) + 1;
+    }
+    const pacientesUnicos = new Set(prescriptions.map(p => p.patientId)).size;
+
+    contexto = `Medicamento: ${valor}. Prescricoes por mes: ${JSON.stringify(porMes)}. Total prescricoes: ${prescriptions.length}. Pacientes unicos: ${pacientesUnicos}. Receitas ativas: ${prescriptions.filter(p => p.active).length}.`;
+  }
+
+  else if (filtro === "paciente") {
+    const [appointments, prescriptions, exams] = await Promise.all([
+      prisma.appointment.findMany({
+        where: { patientId: valor, scheduledAt: { gte: dozeAtras } },
+        select: { scheduledAt: true, specialty: true, status: true },
+      }),
+      prisma.prescription.findMany({
+        where: { patientId: valor },
+        select: { medication: true, createdAt: true, active: true },
+      }),
+      prisma.exam.findMany({
+        where: { patientId: valor },
+        select: { exam: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    const porMes = {};
+    for (const a of appointments) {
+      const key = a.scheduledAt.toISOString().slice(0, 7);
+      porMes[key] = (porMes[key] || 0) + 1;
+    }
+    const especialidades = {};
+    for (const a of appointments) especialidades[a.specialty] = (especialidades[a.specialty] || 0) + 1;
+    const meds = prescriptions.map(p => p.medication).join(", ");
+
+    contexto = `Paciente anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Especialidades mais consultadas: ${JSON.stringify(especialidades)}. Faltas: ${appointments.filter(a => a.status === "faltou").length}. Medicamentos: ${meds}. Exames: ${exams.map(e => e.exam).join(", ")}.`;
+  }
+
+  else if (filtro === "unidade") {
+    const appointments = await prisma.appointment.findMany({
+      where: { unit: valor, scheduledAt: { gte: dozeAtras } },
+      select: { scheduledAt: true, specialty: true, status: true },
+    });
+
+    const porMes = {};
+    for (const a of appointments) {
+      const key = a.scheduledAt.toISOString().slice(0, 7);
+      porMes[key] = (porMes[key] || 0) + 1;
+    }
+    const porEsp = {};
+    for (const a of appointments) porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
+    const faltas = appointments.filter(a => a.status === "faltou").length;
+
+    contexto = `Unidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por especialidade: ${JSON.stringify(porEsp)}. Total: ${appointments.length}. Faltas: ${faltas}.`;
+  }
+
+  else if (filtro === "especialidade") {
+    const appointments = await prisma.appointment.findMany({
+      where: { specialty: valor, scheduledAt: { gte: dozeAtras } },
+      select: { scheduledAt: true, status: true, unit: true },
+    });
+
+    const porMes = {};
+    for (const a of appointments) {
+      const key = a.scheduledAt.toISOString().slice(0, 7);
+      porMes[key] = (porMes[key] || 0) + 1;
+    }
+    const porUnidade = {};
+    for (const a of appointments) porUnidade[a.unit] = (porUnidade[a.unit] || 0) + 1;
+
+    contexto = `Especialidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por unidade: ${JSON.stringify(porUnidade)}. Faltas: ${appointments.filter(a => a.status === "faltou").length}.`;
+  }
+
+  else if (filtro === "medico") {
+    const [appointments, prescriptions] = await Promise.all([
+      prisma.appointment.findMany({
+        where: { doctorId: valor, scheduledAt: { gte: dozeAtras } },
+        select: { scheduledAt: true, status: true, specialty: true },
+      }),
+      prisma.prescription.findMany({
+        where: { doctorId: valor, createdAt: { gte: dozeAtras } },
+        select: { medication: true, createdAt: true },
+      }),
+    ]);
+
+    const porMes = {};
+    for (const a of appointments) {
+      const key = a.scheduledAt.toISOString().slice(0, 7);
+      porMes[key] = (porMes[key] || 0) + 1;
+    }
+    const medMap = {};
+    for (const p of prescriptions) medMap[p.medication] = (medMap[p.medication] || 0) + 1;
+    const topMeds = Object.entries(medMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([m, c]) => `${m}:${c}`).join(", ");
+
+    contexto = `Medico anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Total: ${appointments.length}. Faltas: ${appointments.filter(a => a.status === "faltou").length}. Top medicamentos prescritos: ${topMeds}.`;
+  }
+
+  else {
+    return res.status(400).json({ detail: "Filtro inválido. Use: estacao, medicamento, paciente, unidade, especialidade, medico" });
+  }
+
+  const prompt = `Analise estes dados de saude publica municipal brasileira. Responda APENAS com JSON valido, sem texto adicional, sem markdown.
+
+DADOS: ${contexto}
+
+Formato obrigatorio:
+{"padroes":[{"titulo":"string","descricao":"string","impacto":"alto|medio|baixo"}],"previsoes":[{"periodo":"string","descricao":"string","confianca":"alta|media|baixa"}],"recomendacoes":[{"titulo":"string","descricao":"string"}],"resumo":"string"}`;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(500).json({ detail: "Resposta inválida da IA" });
+    const parsed = JSON.parse(jsonMatch[0]);
+    await audit(req.user, "ai.insights", "gemini", { filtro, valor });
+    res.json({ ok: true, filtro, data: parsed });
+  } catch (e) {
+    console.error("Erro ao consultar o Gemini. Entre em contato com o suporte.", e);
+    res.status(500).json({ detail: "Erro ao consultar IA: " + e.message });
+  }
+});
+
 const CID = [
   { code: "I10", desc: "Hipertensão essencial" },
   { code: "E11", desc: "Diabetes tipo 2" },

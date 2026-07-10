@@ -15,7 +15,8 @@ import {
   Users,
   Calendar,
   FileText,
-  ListChecks
+  ListChecks,
+  Brain,
 } from "lucide-react";
 
 const navByRole = {
@@ -41,6 +42,7 @@ const navByRole = {
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
     { to: "/secretario/estoque", label: "Estoque por Unidade", icon: Pill },
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
+    { to: "/secretario/ia", label: "Previsao por IA", icon: Brain},
   ],
   admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
