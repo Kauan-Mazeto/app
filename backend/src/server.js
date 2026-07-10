@@ -596,24 +596,18 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
   }
 
-  let stock = await prisma.medicineStock.findFirst({
-    where: { healthUnitId: user.healthUnitId, medicineId }
-  });
+  const [stock] = await prisma.$transaction([
+    prisma.medicineStock.upsert({
+      where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
+      update: { quantity: { increment: qty } },
+      create: { healthUnitId: user.healthUnitId, medicineId, quantity: qty },
+    }),
+    prisma.stockTransaction.create({
+      data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "ENTRY", quantity: qty },
+    }),
+  ]);
 
-  if (stock) {
-    stock = await prisma.medicineStock.update({
-      where: { id: stock.id },
-      data: { quantity: { increment: qty } }
-    });
-  } else {
-    stock = await prisma.medicineStock.create({
-      data: { healthUnitId: user.healthUnitId, medicineId, quantity: qty }
-    });
-  }
-
-  await prisma.stockTransaction.create({
-    data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "ENTRY", quantity: qty }
-  });
+  await audit(user, "stock.entry", stock.id, { medicineId, quantity: qty });
 
   res.json({ ok: true, stock });
 });
@@ -631,32 +625,54 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
   }
 
-  const stock = await prisma.medicineStock.findFirst({
-    where: { healthUnitId: user.healthUnitId, medicineId }
-  });
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      // updateMany com filtro "quantity >= qty" garante atomicidade: se duas
+      // requisições concorrentes tentarem descontar ao mesmo tempo, apenas
+      // quem ainda tiver saldo suficiente no momento exato do UPDATE terá count > 0.
+      const result = await tx.medicineStock.updateMany({
+        where: { healthUnitId: user.healthUnitId, medicineId, quantity: { gte: qty } },
+        data: { quantity: { decrement: qty } },
+      });
+      if (result.count === 0) {
+        const err = new Error("Estoque insuficiente");
+        err.code = "INSUFFICIENT_STOCK";
+        throw err;
+      }
+      await tx.stockTransaction.create({
+        data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "EXIT", quantity: qty },
+      });
+      return tx.medicineStock.findUnique({
+        where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
+      });
+    });
 
-  if (!stock || stock.quantity < qty) {
-    return res.status(400).json({ detail: "Estoque insuficiente" });
+    await audit(user, "stock.exit", updated.id, { medicineId, quantity: qty });
+    res.json({ ok: true, stock: updated });
+  } catch (e) {
+    if (e.code === "INSUFFICIENT_STOCK") {
+      return res.status(400).json({ detail: "Estoque insuficiente" });
+    }
+    throw e;
   }
-
-  const updated = await prisma.medicineStock.update({
-    where: { id: stock.id },
-    data: { quantity: { decrement: qty } }
-  });
-
-  await prisma.stockTransaction.create({
-    data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "EXIT", quantity: qty }
-  });
-
-  res.json({ ok: true, stock: updated });
 });
 
+const LOW_STOCK_THRESHOLD = 5;
+
 api.get("/secretario/dashboard-stock", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  const units = await prisma.healthUnit.findMany({ include: { stocks: true } });
+  const units = await prisma.healthUnit.findMany({
+    include: { stocks: { orderBy: { medicineId: "asc" } } },
+    orderBy: { name: "asc" },
+  });
   const out = units.map(u => ({
     id: u.id,
     name: u.name,
-    stocks: u.stocks.map(s => ({ medicineId: s.medicineId, quantity: s.quantity }))
+    stocks: u.stocks.map(s => ({
+      medicineId: s.medicineId,
+      quantity: s.quantity,
+      lowStock: s.quantity > 0 && s.quantity <= LOW_STOCK_THRESHOLD,
+      outOfStock: s.quantity <= 0,
+    })),
   }));
   res.json(out);
 });

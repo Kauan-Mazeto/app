@@ -113,7 +113,10 @@ model MedicineStock {
   healthUnitId String
   medicineId   String
   quantity     Int        @default(0)
+  updatedAt    DateTime   @default(now()) @updatedAt
   healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  @@unique([healthUnitId, medicineId])
 }
 
 model StockTransaction {
@@ -125,6 +128,9 @@ model StockTransaction {
   quantity     Int
   createdAt    DateTime   @default(now())
   healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  @@index([healthUnitId, medicineId])
+  @@index([createdAt])
 }
 
 model WaitingList {

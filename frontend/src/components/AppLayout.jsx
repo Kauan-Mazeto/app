@@ -32,10 +32,13 @@ const navByRole = {
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
+    { to: "/atendente/estoque/entrada", label: "Estoque · Entrada", icon: Pill },
+    { to: "/atendente/estoque/saida", label: "Estoque · Dispensação", icon: Pill },
   ],
   secretario: [
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
+    { to: "/secretario/estoque", label: "Estoque por Unidade", icon: Pill },
   ],
   admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };

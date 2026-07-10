@@ -10,8 +10,11 @@ import AtendenteDashboard from "@/pages/atendente/AtendenteDashboard";
 import VagasOciosas from "@/pages/atendente/VagasOciosas";
 import EntregaExames from "@/pages/atendente/EntregaExames";
 import BuscadorRefs from "@/pages/atendente/BuscadorRefs";
+import StockEntry from "@/pages/atendente/StockEntry";
+import Dispense from "@/pages/atendente/Dispense";
 import SecretarioDashboard from "@/pages/secretario/SecretarioDashboard";
 import Auditoria from "@/pages/secretario/Auditoria";
+import StockDashboard from "@/pages/secretario/StockDashboard";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import "./App.css";
 
@@ -58,11 +61,14 @@ function App() {
               <Route path="/atendente/vagas" element={<VagasOciosas />} />
               <Route path="/atendente/exames" element={<EntregaExames />} />
               <Route path="/atendente/refs" element={<BuscadorRefs />} />
+              <Route path="/atendente/estoque/entrada" element={<StockEntry />} />
+              <Route path="/atendente/estoque/saida" element={<Dispense />} />
             </Route>
 
             <Route element={<Protected roles={["secretario"]}><AppLayout /></Protected>}>
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
+              <Route path="/secretario/estoque" element={<StockDashboard />} />
             </Route>
 
             <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>
