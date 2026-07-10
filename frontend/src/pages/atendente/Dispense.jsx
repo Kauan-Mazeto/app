@@ -5,15 +5,25 @@ import { toast } from "sonner";
 export default function Dispense() {
   const [medicine, setMedicine] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [dosage, setDosage] = useState("");
+  const [lot, setLot] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     if (!medicine.trim() || quantity <= 0) return toast.warning("Informe medicamento e quantidade válida");
     setLoading(true);
     try {
-      await api.post("/stock/exit", { medicine_id: medicine.trim(), quantity });
-      toast.success("Baixa registrada");
-      setMedicine(""); setQuantity(1);
+      await api.post("/stock/exit", {
+        medicine_id: medicine.trim(),
+        medicine_name: medicine.trim(),
+        quantity,
+        dosage,
+        lot,
+        notes,
+      });
+      toast.success("Baixa registrada e salva na movimentação de estoque");
+      setMedicine(""); setQuantity(1); setDosage(""); setLot(""); setNotes("");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao registrar baixa");
     } finally { setLoading(false); }
@@ -27,6 +37,12 @@ export default function Dispense() {
         <div className="grid grid-cols-1 gap-4">
           <label className="text-sm">Medicamento</label>
           <input value={medicine} onChange={(e) => setMedicine(e.target.value)} className="inp" placeholder="Nome ou código do medicamento" />
+          <label className="text-sm">Dosagem</label>
+          <input value={dosage} onChange={(e) => setDosage(e.target.value)} className="inp" placeholder="Ex.: 500mg" />
+          <label className="text-sm">Lote / Referência</label>
+          <input value={lot} onChange={(e) => setLot(e.target.value)} className="inp" placeholder="Opcional" />
+          <label className="text-sm">Observações</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="inp min-h-[90px]" placeholder="Informações adicionais do medicamento" />
           <label className="text-sm">Quantidade</label>
           <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="inp" />
           <div className="flex justify-end">

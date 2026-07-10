@@ -133,14 +133,16 @@ model MedicineStock {
 }
 
 model StockTransaction {
-  id           String     @id @default(uuid())
-  healthUnitId String
-  medicineId   String
-  userId       String
-  type         String
-  quantity     Int
-  createdAt    DateTime   @default(now())
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+  id              String     @id @default(uuid())
+  healthUnitId    String
+  medicineId      String
+  medicineName    String
+  medicineDetails String?
+  userId          String
+  type            String
+  quantity        Int
+  createdAt       DateTime   @default(now())
+  healthUnit      HealthUnit @relation(fields: [healthUnitId], references: [id])
 
   @@index([healthUnitId, medicineId])
   @@index([createdAt])

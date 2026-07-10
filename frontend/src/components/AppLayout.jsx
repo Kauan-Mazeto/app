@@ -33,7 +33,7 @@ const navByRole = {
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
-    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
+    { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
     { to: "/atendente/estoque/entrada", label: "Estoque · Entrada", icon: Pill },
     { to: "/atendente/estoque/saida", label: "Estoque · Dispensação", icon: Pill },
   ],
