@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, Users, AlertTriangle, Heart, Pill, Package, ClipboardList } from "lucide-react";
+import { TrendingUp, Users, AlertTriangle, Heart, Pill, Package } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const COLORS = ["#1D3557", "#457B9D", "#E76F51", "#E9C46A", "#2A9D8F", "#8D99AE"];
@@ -78,12 +78,12 @@ export default function SecretarioDashboard() {
               <XAxis type="number" stroke="#64748B" style={{ fontSize: 11 }} />
               <YAxis dataKey="medication" type="category" stroke="#64748B" style={{ fontSize: 11 }} width={140} />
               <Tooltip />
-              <Bar dataKey="patients" fill="#457B9D" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="patients" name="Pacientes" fill="#457B9D" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Mapa de gargalos por especialidade">
+        <Card title="Mapa de gargalos · Absenteísmo por especialidade">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={d.by_specialty}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />

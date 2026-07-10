@@ -100,7 +100,7 @@ export default function PrevisaoIA() {
         <div className="p-8 max-w-7xl mx-auto">
             <div className="mb-8">
                 <div className="overline text-[#457B9D]">Inteligencia Artificial · Analise</div>
-                <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Previsao e Padroes</h1>
+                <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Previsão e Padrões</h1>
                 <p className="text-slate-500 mt-1">Analise de padroes e previsao de demanda baseada nos dados reais do sistema.</p>
             </div>
 

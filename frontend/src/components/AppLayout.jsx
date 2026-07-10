@@ -11,11 +11,7 @@ import {
   Bell,
   Pill,
   Package,
-  Clock,
-  Users,
   Calendar,
-  FileText,
-  ListChecks,
   Brain,
   MessageSquare,
 } from "lucide-react";
@@ -66,6 +62,7 @@ const navByRole = {
   admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
 
+
 const roleLabel = {
   medico: "Médico(a)",
   atendente: "Atendente",
@@ -78,6 +75,14 @@ export default function AppLayout() {
   const nav = useNavigate();
   const links = navByRole[user.role] || [];
 
+  const homePath = user?.role === "secretario"
+    ? "/secretario"
+    : user?.role === "atendente"
+      ? "/atendente"
+      : user?.role === "medico"
+        ? "/medico"
+        : "/admin";
+
   const handleLogout = async () => {
     await logout();
     nav("/login");
@@ -88,13 +93,13 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
         <div className="px-6 py-6 border-b border-white/10">
-          <div className="flex items-center">
+          <button type="button" onClick={() => nav(homePath)} className="flex items-center rounded-lg transition hover:opacity-90">
             <img
               src="/logoProjeto.png"
               alt="Saúde na palma da mão"
               className="h-20 w-auto object-contain"
             />
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 px-3 py-5 space-y-1">

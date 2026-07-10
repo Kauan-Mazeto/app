@@ -811,46 +811,114 @@ api.get(
    MÓDULO DE CONTROLE DE ESTOQUE (MEDICAMENTOS)
    ========================================== */
 
-api.post(
-  "/stock/entry",
-  requireAuth,
-  requireRoles("atendente"),
-  async (req, res) => {
-    const user = req.user;
-    if (!user.healthUnitId) {
-      return res
-        .status(400)
-        .json({ detail: "Atendente sem unidade de saúde associada" });
-    }
+api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res) => {
+  const user = req.user;
 
-    const medicineId = req.body.medicine_id || req.body.medicineId;
-    const qty = Number(req.body.quantity || 0);
-    const medicineName = (
-      req.body.medicine_name ||
-      req.body.medicineName ||
-      medicineId ||
-      ""
-    )
-      .toString()
-      .trim();
-    const dosage = (req.body.dosage || "").toString().trim();
-    const lot = (req.body.lot || "").toString().trim();
-    const notes = (req.body.notes || "").toString().trim();
+  const medicineId = req.body.medicine_id || req.body.medicineId;
+  const qty = Number(req.body.quantity || 0);
+  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
+  const dosage = (req.body.dosage || "").toString().trim();
+  const lot = (req.body.lot || "").toString().trim();
+  const notes = (req.body.notes || "").toString().trim();
+  const selectedUnitRef = req.body.health_unit_id || req.body.unit_id || req.body.unitId || user.healthUnitId;
 
-    if (!medicineId || qty <= 0) {
-      return res.status(400).json({
-        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
+  if (!medicineId || qty <= 0) {
+    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
+  }
+
+  const selectedUnit = await prisma.healthUnit.findFirst({
+    where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
+  });
+  if (!selectedUnit) {
+    return res.status(400).json({ detail: "Unidade de saúde inválida" });
+  }
+
+  const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "ENTRY" });
+  const [stock] = await prisma.$transaction([
+    prisma.medicineStock.fields ? null : prisma.medicineStock.upsert({
+      where: { healthUnitId_medicineId: { healthUnitId: selectedUnit.id, medicineId } },
+      update: { quantity: { increment: qty } },
+      create: { healthUnitId: selectedUnit.id, medicineId, quantity: qty },
+    }),
+    prisma.stockTransaction.create({
+      data: {
+        healthUnitId: selectedUnit.id,
+        medicineId,
+        medicineName: medicineName || medicineId,
+        medicineDetails,
+        userId: user.id,
+        type: "ENTRY",
+        quantity: qty,
+      },
+    }),
+  ]);
+
+  await audit(user, "stock.entry", stock.id, {
+    medicineId,
+    medicineName: medicineName || medicineId,
+    quantity: qty,
+    unitId: selectedUnit.id,
+    unitName: selectedUnit.name,
+    attendantName: user.name,
+    details: JSON.parse(medicineDetails),
+  });
+
+  res.json({ ok: true, stock });
+});
+
+api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res) => {
+  const user = req.user;
+
+  const medicineId = req.body.medicine_id || req.body.medicineId;
+  const qty = Number(req.body.quantity || 0);
+  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
+  const dosage = (req.body.dosage || "").toString().trim();
+  const lot = (req.body.lot || "").toString().trim();
+  const notes = (req.body.notes || "").toString().trim();
+  const selectedUnitRef = req.body.health_unit_id || req.body.unit_id || req.body.unitId || user.healthUnitId;
+
+  if (!medicineId || qty <= 0) {
+    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
+  }
+
+  const selectedUnit = await prisma.healthUnit.findFirst({
+    where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
+  });
+
+  if (!selectedUnit) {
+    return res.status(400).json({ detail: "Unidade de saúde inválida" });
+  }
+
+  try {
+    // 1. Executa a saída de estoque (Bloco que havia sido cortado no Git)
+    const medicineDetailsExit = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "EXIT" });
+    
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.medicineStock.updateMany({
+        where: { healthUnitId: selectedUnit.id, medicineId, quantity: { gte: qty } },
+        data: { quantity: { decrement: qty } },
       });
-    }
 
-    const medicineDetails = JSON.stringify({
-      medicineId,
-      medicineName,
-      dosage,
-      lot,
-      notes,
-      type: "ENTRY",
+      if (result.count === 0) {
+        throw new Error("Estoque insuficiente para realizar a saída.");
+      }
+
+      await tx.stockTransaction.create({
+        data: {
+          healthUnitId: selectedUnit.id,
+          medicineId,
+          medicineName: medicineName || medicineId,
+          medicineDetails: medicineDetailsExit,
+          userId: user.id,
+          type: "EXIT",
+          quantity: qty,
+        },
+      });
     });
+
+    // 2. Executa a entrada de estoque correspondente
+    const medicineDetailsEntry = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "ENTRY" });
+
     const [stock] = await prisma.$transaction([
       prisma.medicineStock.upsert({
         where: {
@@ -864,28 +932,36 @@ api.post(
       }),
       prisma.stockTransaction.create({
         data: {
-          healthUnitId: user.healthUnitId,
+          healthUnitId: selectedUnit.id,
           medicineId,
           medicineName: medicineName || medicineId,
-          medicineDetails,
+          medicineDetails: medicineDetailsEntry,
           userId: user.id,
           type: "ENTRY",
           quantity: qty,
         },
-      }),
+      })
     ]);
 
+    // 3. Auditoria do sistema
     await audit(user, "stock.entry", stock.id, {
       medicineId,
       medicineName: medicineName || medicineId,
       quantity: qty,
-      unitId: user.healthUnitId,
-      details: JSON.parse(medicineDetails),
+      unitId: selectedUnit.id,
+      unitName: selectedUnit.name,
+      attendantName: user.name,
+      details: JSON.parse(medicineDetailsEntry),
     });
 
-    res.json({ ok: true, stock });
-  },
-);
+    return res.json({ ok: true, stock });
+
+  } catch (error) {
+    console.error("Erro na transação de estoque:", error);
+    return res.status(500).json({ detail: error.message || "Erro interno ao processar estoque" });
+  }
+});
+
 
 api.post(
   "/stock/exit",
@@ -1009,6 +1085,23 @@ api.get(
     );
   },
 );
+
+api.get("/stock/summary", requireAuth, requireRoles("atendente", "secretario", "admin"), async (req, res) => {
+  const stocks = await prisma.medicineStock.findMany({
+    include: { healthUnit: true },
+    orderBy: [{ quantity: "asc" }, { medicineId: "asc" }],
+  });
+
+  res.json(
+    stocks.map((stock) => ({
+      medicineId: stock.medicineId,
+      medicineName: stock.medicineId,
+      unitId: stock.healthUnitId,
+      unitName: stock.healthUnit?.name || "Sem unidade",
+      quantity: stock.quantity,
+    })),
+  );
+});
 
 const LOW_STOCK_THRESHOLD = 5;
 

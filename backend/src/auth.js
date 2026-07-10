@@ -24,8 +24,17 @@ export const requireRoles = (...roles) => (req, res, next) => {
 };
 
 export async function audit(user, action, target = "", details = {}) {
+  const timestamp = new Date().toISOString();
+  const fullDetails = {
+    ...details,
+    timestamp,
+    action,
+    target,
+    user: { id: user.id, name: user.name, role: user.role },
+  };
+
   await prisma.auditLog.create({ data: {
     userId: user.id, userName: user.name, userRole: user.role,
-    action, target, details: JSON.stringify(details),
+    action, target, details: JSON.stringify(fullDetails),
   }});
 }
