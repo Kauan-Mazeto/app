@@ -753,13 +753,18 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
     return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
   }
 
-  const medicineId = req.body.medicine_id;
+  const medicineId = req.body.medicine_id || req.body.medicineId;
   const qty = Number(req.body.quantity || 0);
+  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
+  const dosage = (req.body.dosage || "").toString().trim();
+  const lot = (req.body.lot || "").toString().trim();
+  const notes = (req.body.notes || "").toString().trim();
 
   if (!medicineId || qty <= 0) {
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
   }
 
+  const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "ENTRY" });
   const [stock] = await prisma.$transaction([
     prisma.medicineStock.upsert({
       where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
@@ -767,11 +772,25 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
       create: { healthUnitId: user.healthUnitId, medicineId, quantity: qty },
     }),
     prisma.stockTransaction.create({
-      data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "ENTRY", quantity: qty },
+      data: {
+        healthUnitId: user.healthUnitId,
+        medicineId,
+        medicineName: medicineName || medicineId,
+        medicineDetails,
+        userId: user.id,
+        type: "ENTRY",
+        quantity: qty,
+      },
     }),
   ]);
 
-  await audit(user, "stock.entry", stock.id, { medicineId, quantity: qty });
+  await audit(user, "stock.entry", stock.id, {
+    medicineId,
+    medicineName: medicineName || medicineId,
+    quantity: qty,
+    unitId: user.healthUnitId,
+    details: JSON.parse(medicineDetails),
+  });
 
   res.json({ ok: true, stock });
 });
@@ -782,18 +801,20 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
     return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
   }
 
-  const medicineId = req.body.medicine_id;
+  const medicineId = req.body.medicine_id || req.body.medicineId;
   const qty = Number(req.body.quantity || 0);
+  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
+  const dosage = (req.body.dosage || "").toString().trim();
+  const lot = (req.body.lot || "").toString().trim();
+  const notes = (req.body.notes || "").toString().trim();
 
   if (!medicineId || qty <= 0) {
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
   }
 
   try {
+    const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "EXIT" });
     const updated = await prisma.$transaction(async (tx) => {
-      // updateMany com filtro "quantity >= qty" garante atomicidade: se duas
-      // requisições concorrentes tentarem descontar ao mesmo tempo, apenas
-      // quem ainda tiver saldo suficiente no momento exato do UPDATE terá count > 0.
       const result = await tx.medicineStock.updateMany({
         where: { healthUnitId: user.healthUnitId, medicineId, quantity: { gte: qty } },
         data: { quantity: { decrement: qty } },
@@ -804,14 +825,28 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
         throw err;
       }
       await tx.stockTransaction.create({
-        data: { healthUnitId: user.healthUnitId, medicineId, userId: user.id, type: "EXIT", quantity: qty },
+        data: {
+          healthUnitId: user.healthUnitId,
+          medicineId,
+          medicineName: medicineName || medicineId,
+          medicineDetails,
+          userId: user.id,
+          type: "EXIT",
+          quantity: qty,
+        },
       });
       return tx.medicineStock.findUnique({
         where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
       });
     });
 
-    await audit(user, "stock.exit", updated.id, { medicineId, quantity: qty });
+    await audit(user, "stock.exit", updated.id, {
+      medicineId,
+      medicineName: medicineName || medicineId,
+      quantity: qty,
+      unitId: user.healthUnitId,
+      details: JSON.parse(medicineDetails),
+    });
     res.json({ ok: true, stock: updated });
   } catch (e) {
     if (e.code === "INSUFFICIENT_STOCK") {
@@ -819,6 +854,28 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
     }
     throw e;
   }
+});
+
+api.get("/stock/transactions", requireAuth, requireRoles("atendente", "secretario", "admin"), async (req, res) => {
+  const transactions = await prisma.stockTransaction.findMany({
+    include: { healthUnit: true, user: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+
+  res.json(
+    transactions.map((t) => ({
+      id: t.id,
+      type: t.type,
+      quantity: t.quantity,
+      createdAt: t.createdAt.toISOString(),
+      medicineId: t.medicineId,
+      medicineName: t.medicineName,
+      medicineDetails: t.medicineDetails ? JSON.parse(t.medicineDetails) : {},
+      user: t.user,
+      unit: t.healthUnit?.name || "Sem unidade",
+    })),
+  );
 });
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -864,24 +921,29 @@ api.get("/audit-logs", requireAuth, requireRoles("secretario", "admin"), async (
 });
 
 
-/*import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 api.get("/ai/opcoes", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  const [medicamentos, pacientes, medicos, unidades] = await Promise.all([
-    prisma.prescription.findMany({ select: { medication: true }, distinct: ["medication"], orderBy: { medication: "asc" } }),
-    prisma.patient.findMany({ select: { id: true, name: true, cpf: true }, orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { role: "medico" }, select: { id: true, name: true, specialty: true }, orderBy: { name: "asc" } }),
-    prisma.appointment.findMany({ select: { unit: true }, distinct: ["unit"], orderBy: { unit: "asc" } }),
-  ]);
-  res.json({
-    medicamentos: medicamentos.map(m => m.medication),
-    pacientes: pacientes.map(p => ({ id: p.id, label: `${p.name} · ${p.cpf}` })),
-    medicos: medicos.map(m => ({ id: m.id, label: `${m.name} · ${m.specialty}` })),
-    unidades: unidades.map(u => u.unit),
-  });
+  try {
+    const [medicamentos, pacientes, medicos, unidades] = await Promise.all([
+      prisma.prescription.findMany({ select: { medication: true }, distinct: ["medication"], orderBy: { medication: "asc" } }),
+      prisma.patient.findMany({ select: { id: true, name: true, cpf: true }, orderBy: { name: "asc" } }),
+      prisma.user.findMany({ where: { role: "medico" }, select: { id: true, name: true, specialty: true }, orderBy: { name: "asc" } }),
+      prisma.appointment.findMany({ select: { unit: true }, distinct: ["unit"], orderBy: { unit: "asc" } }),
+    ]);
+    res.json({
+      medicamentos: medicamentos.map(m => m.medication),
+      pacientes: pacientes.map(p => ({ id: p.id, label: `${p.name} · ${p.cpf}` })),
+      medicos: medicos.map(m => ({ id: m.id, label: `${m.name} · ${m.specialty}` })),
+      unidades: unidades.map(u => u.unit),
+    });
+  } catch (e) {
+    console.error("Erro ao consultar o Gemini. Entre em contato com o suporte.", e);
+    res.status(500).json({ detail: "Erro ao consultar a IA."});
+  }
 });
-*/
+
 //  Código foi comentado por que estava dando problema ao subir para o git. 
 
 api.post("/ai/insights", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
@@ -1055,7 +1117,7 @@ Formato obrigatorio:
     res.json({ ok: true, filtro, data: parsed });
   } catch (e) {
     console.error("Erro ao consultar o Gemini. Entre em contato com o suporte.", e);
-    res.status(500).json({ detail: "Erro ao consultar IA: " + e.message });
+    res.status(500).json({ detail: "Erro ao consultar a IA."});
   }
 });
 
