@@ -11,11 +11,7 @@ import {
   Bell,
   Pill,
   Package,
-  Clock,
-  Users,
   Calendar,
-  FileText,
-  ListChecks,
   Brain,
 } from "lucide-react";
 
@@ -34,13 +30,12 @@ const navByRole = {
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
-    { to: "/atendente/estoque/entrada", label: "Estoque · Entrada", icon: Pill },
-    { to: "/atendente/estoque/saida", label: "Estoque · Dispensação", icon: Pill },
+    { to: "/atendente/estoque", label: "Estoque", icon: Pill },
   ],
   secretario: [
     { to: "/secretario", label: "Indicadores", icon: BarChart3, end: true },
     { to: "/secretario/auditoria", label: "Auditoria", icon: ShieldCheck },
-    { to: "/secretario/estoque", label: "Estoque por Unidade", icon: Pill },
+    { to: "/secretario/estoque", label: "Estoque", icon: Pill },
     { to: "/atendente/config-vagas", label: "Vagas Online x Presencial", icon: Calendar },
     { to: "/secretario/ia", label: "Previsao por IA", icon: Brain},
   ],
@@ -59,6 +54,14 @@ export default function AppLayout() {
   const nav = useNavigate();
   const links = navByRole[user.role] || [];
 
+  const homePath = user?.role === "secretario"
+    ? "/secretario"
+    : user?.role === "atendente"
+      ? "/atendente"
+      : user?.role === "medico"
+        ? "/medico"
+        : "/admin";
+
   const handleLogout = async () => {
     await logout();
     nav("/login");
@@ -69,13 +72,13 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col">
         <div className="px-6 py-6 border-b border-white/10">
-          <div className="flex items-center">
+          <button type="button" onClick={() => nav(homePath)} className="flex items-center rounded-lg transition hover:opacity-90">
             <img
               src="/logoProjeto.png"
               alt="Saúde na palma da mão"
               className="h-20 w-auto object-contain"
             />
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 px-3 py-5 space-y-1">

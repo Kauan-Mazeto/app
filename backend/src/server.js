@@ -749,9 +749,10 @@ api.get(
 
 api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res) => {
   const user = req.user;
-  if (!user.healthUnitId) {
+  /*if (!user.healthUnitId) {
     return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
   }
+    */
 
   const medicineId = req.body.medicine_id || req.body.medicineId;
   const qty = Number(req.body.quantity || 0);
@@ -759,21 +760,29 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
   const dosage = (req.body.dosage || "").toString().trim();
   const lot = (req.body.lot || "").toString().trim();
   const notes = (req.body.notes || "").toString().trim();
+  const selectedUnitRef = req.body.health_unit_id || req.body.unit_id || req.body.unitId || user.healthUnitId;
 
   if (!medicineId || qty <= 0) {
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
   }
 
+  const selectedUnit = await prisma.healthUnit.findFirst({
+    where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
+  });
+  if (!selectedUnit) {
+    return res.status(400).json({ detail: "Unidade de saúde inválida" });
+  }
+
   const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "ENTRY" });
   const [stock] = await prisma.$transaction([
     prisma.medicineStock.upsert({
-      where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
+      where: { healthUnitId_medicineId: { healthUnitId: selectedUnit.id, medicineId } },
       update: { quantity: { increment: qty } },
-      create: { healthUnitId: user.healthUnitId, medicineId, quantity: qty },
+      create: { healthUnitId: selectedUnit.id, medicineId, quantity: qty },
     }),
     prisma.stockTransaction.create({
       data: {
-        healthUnitId: user.healthUnitId,
+        healthUnitId: selectedUnit.id,
         medicineId,
         medicineName: medicineName || medicineId,
         medicineDetails,
@@ -788,7 +797,9 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
     medicineId,
     medicineName: medicineName || medicineId,
     quantity: qty,
-    unitId: user.healthUnitId,
+    unitId: selectedUnit.id,
+    unitName: selectedUnit.name,
+    attendantName: user.name,
     details: JSON.parse(medicineDetails),
   });
 
@@ -797,9 +808,10 @@ api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res
 
 api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res) => {
   const user = req.user;
-  if (!user.healthUnitId) {
+  /*if (!user.healthUnitId) {
     return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
   }
+    */
 
   const medicineId = req.body.medicine_id || req.body.medicineId;
   const qty = Number(req.body.quantity || 0);
@@ -807,16 +819,24 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
   const dosage = (req.body.dosage || "").toString().trim();
   const lot = (req.body.lot || "").toString().trim();
   const notes = (req.body.notes || "").toString().trim();
+  const selectedUnitRef = req.body.health_unit_id || req.body.unit_id || req.body.unitId || user.healthUnitId;
 
   if (!medicineId || qty <= 0) {
     return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
+  }
+
+  const selectedUnit = await prisma.healthUnit.findFirst({
+    where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
+  });
+  if (!selectedUnit) {
+    return res.status(400).json({ detail: "Unidade de saúde inválida" });
   }
 
   try {
     const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "EXIT" });
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.medicineStock.updateMany({
-        where: { healthUnitId: user.healthUnitId, medicineId, quantity: { gte: qty } },
+        where: { healthUnitId: selectedUnit.id, medicineId, quantity: { gte: qty } },
         data: { quantity: { decrement: qty } },
       });
       if (result.count === 0) {
@@ -826,7 +846,7 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
       }
       await tx.stockTransaction.create({
         data: {
-          healthUnitId: user.healthUnitId,
+          healthUnitId: selectedUnit.id,
           medicineId,
           medicineName: medicineName || medicineId,
           medicineDetails,
@@ -836,7 +856,7 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
         },
       });
       return tx.medicineStock.findUnique({
-        where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
+        where: { healthUnitId_medicineId: { healthUnitId: selectedUnit.id, medicineId } },
       });
     });
 
@@ -844,7 +864,9 @@ api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res)
       medicineId,
       medicineName: medicineName || medicineId,
       quantity: qty,
-      unitId: user.healthUnitId,
+      unitId: selectedUnit.id,
+      unitName: selectedUnit.name,
+      attendantName: user.name,
       details: JSON.parse(medicineDetails),
     });
     res.json({ ok: true, stock: updated });
@@ -874,6 +896,23 @@ api.get("/stock/transactions", requireAuth, requireRoles("atendente", "secretari
       medicineDetails: t.medicineDetails ? JSON.parse(t.medicineDetails) : {},
       user: t.user,
       unit: t.healthUnit?.name || "Sem unidade",
+    })),
+  );
+});
+
+api.get("/stock/summary", requireAuth, requireRoles("atendente", "secretario", "admin"), async (req, res) => {
+  const stocks = await prisma.medicineStock.findMany({
+    include: { healthUnit: true },
+    orderBy: [{ quantity: "asc" }, { medicineId: "asc" }],
+  });
+
+  res.json(
+    stocks.map((stock) => ({
+      medicineId: stock.medicineId,
+      medicineName: stock.medicineId,
+      unitId: stock.healthUnitId,
+      unitName: stock.healthUnit?.name || "Sem unidade",
+      quantity: stock.quantity,
     })),
   );
 });

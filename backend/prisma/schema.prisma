@@ -25,6 +25,7 @@ model User {
   examsRequest  Exam[]         @relation("ExamRequestedBy")
   examsDeliver  Exam[]         @relation("ExamDeliveredBy")
   auditLogs     AuditLog[]
+  stockTransactions StockTransaction[]
 }
 
 model Patient {
@@ -143,6 +144,7 @@ model StockTransaction {
   quantity        Int
   createdAt       DateTime   @default(now())
   healthUnit      HealthUnit @relation(fields: [healthUnitId], references: [id])
+  user            User       @relation(fields: [userId], references: [id])
 
   @@index([healthUnitId, medicineId])
   @@index([createdAt])

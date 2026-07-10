@@ -165,7 +165,7 @@ export default function ConfiguracaoVagas() {
           </div>
           <div className="text-sm text-slate-600">
             {today.max_online_slots === null ? (
-              <>Hoje ({unit}) não tem limite de vagas online configurado — agendamentos online são ilimitados.</>
+              <>Hoje ({unit}) não tem limite de vagas online configurado, os agendamentos online são ilimitados.</>
             ) : (
               <>
                 Hoje ({unit}): <strong className="text-[#1D3557]">{today.used_online_slots}</strong> de{" "}
