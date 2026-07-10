@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "fetch-refs": "node scripts/fetch-refs.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

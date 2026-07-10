@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { prisma, signToken, requireAuth, requireRoles, audit } from "./auth.js";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -36,10 +38,10 @@ const toAppt = (a) => ({
   scheduled_at: a.scheduledAt.toISOString(),
   patient: a.patient
     ? {
-      name: a.patient.name,
-      cpf: a.patient.cpf,
-      birth_date: a.patient.birthDate,
-    }
+        name: a.patient.name,
+        cpf: a.patient.cpf,
+        birth_date: a.patient.birthDate,
+      }
     : {},
 });
 const parseJson = (value, fallback = []) => {
@@ -74,6 +76,36 @@ const dayRange = (date) => {
   return { start, end };
 };
 
+// Retorna o médico com menos consultas agendadas no dia, preferindo o mesmo unit/specialty.
+async function findLeastBusyDoctor(unit, specialty, date) {
+  const whereDoctor = { role: "medico", specialty };
+  let doctors = await prisma.user.findMany({ where: { ...whereDoctor, unit } });
+  if (!doctors.length)
+    doctors = await prisma.user.findMany({ where: whereDoctor });
+  if (!doctors.length)
+    doctors = await prisma.user.findMany({ where: { role: "medico" } });
+  if (!doctors.length) return null;
+
+  const { start, end } = dayRange(date);
+  let best = null;
+  let bestCount = Infinity;
+
+  for (const doc of doctors) {
+    const count = await prisma.appointment.count({
+      where: {
+        doctorId: doc.id,
+        scheduledAt: { gte: start, lt: end },
+      },
+    });
+    if (count < bestCount) {
+      bestCount = count;
+      best = doc;
+    }
+  }
+
+  return best;
+}
+
 // Verifica se uma nova consulta ONLINE para `unit`/`date` estouraria o
 // limite de vagas online configurado para aquele dia da semana.
 // Sem configuração cadastrada para a unidade/dia = sem limite (não bloqueia).
@@ -93,7 +125,11 @@ async function isOnlineSlotBlocked(unit, date, excludeApptId = null) {
       ...(excludeApptId ? { id: { not: excludeApptId } } : {}),
     },
   });
-  return { blocked: used >= config.maxOnlineSlots, used, max: config.maxOnlineSlots };
+  return {
+    blocked: used >= config.maxOnlineSlots,
+    used,
+    max: config.maxOnlineSlots,
+  };
 }
 
 api.post("/auth/login", async (req, res) => {
@@ -249,10 +285,21 @@ api.post(
       }
     }
 
+    const doctor = await findLeastBusyDoctor(
+      unit,
+      req.body.specialty,
+      scheduledAt,
+    );
+    if (!doctor) {
+      return res.status(400).json({
+        detail: "Nenhum médico disponível foi encontrado para essa consulta.",
+      });
+    }
+
     const a = await prisma.appointment.create({
       data: {
         patientId: req.body.patient_id,
-        doctorId: req.body.doctor_id,
+        doctorId: doctor.id,
         specialty: req.body.specialty,
         scheduledAt,
         priority: req.body.priority || "normal",
@@ -323,8 +370,9 @@ api.get("/health-units", requireAuth, async (req, res) => {
     prisma.user.findMany({ distinct: ["unit"], select: { unit: true } }),
   ]);
   const known = new Set(units.map((u) => u.name));
-  const legacy = [...new Set([...apptUnits, ...userUnits].map((u) => u.unit).filter(Boolean))]
-    .filter((name) => !known.has(name));
+  const legacy = [
+    ...new Set([...apptUnits, ...userUnits].map((u) => u.unit).filter(Boolean)),
+  ].filter((name) => !known.has(name));
   const all = [
     ...units.map((u) => ({ id: u.id, name: u.name })),
     ...legacy.map((name) => ({ id: null, name })),
@@ -339,7 +387,8 @@ api.post(
   requireRoles("atendente", "secretario", "admin"),
   async (req, res) => {
     const name = (req.body.name || "").trim();
-    if (!name) return res.status(400).json({ detail: "Nome da unidade é obrigatório" });
+    if (!name)
+      return res.status(400).json({ detail: "Nome da unidade é obrigatório" });
     const existing = await prisma.healthUnit.findFirst({ where: { name } });
     if (existing) return res.json({ id: existing.id, name: existing.name });
     const unit = await prisma.healthUnit.create({ data: { name } });
@@ -361,7 +410,8 @@ api.get(
   requireRoles("secretario", "admin", "atendente"),
   async (req, res) => {
     const unit = req.query.unit;
-    if (!unit) return res.status(400).json({ detail: "Parâmetro 'unit' é obrigatório" });
+    if (!unit)
+      return res.status(400).json({ detail: "Parâmetro 'unit' é obrigatório" });
     const rows = await prisma.onlineSlotConfig.findMany({ where: { unit } });
     const byDay = Object.fromEntries(rows.map((r) => [r.dayOfWeek, r]));
     const days = DAYS_OF_WEEK.map((dayOfWeek) => {
@@ -384,11 +434,16 @@ api.put(
   async (req, res) => {
     const { unit, days } = req.body;
     if (!unit || !Array.isArray(days))
-      return res.status(400).json({ detail: "Payload inválido: 'unit' e 'days' são obrigatórios" });
+      return res
+        .status(400)
+        .json({ detail: "Payload inválido: 'unit' e 'days' são obrigatórios" });
 
     for (const d of days) {
       const dayOfWeek = Number(d.day_of_week);
-      const onlinePercentage = Math.max(0, Math.min(100, Number(d.online_percentage) || 0));
+      const onlinePercentage = Math.max(
+        0,
+        Math.min(100, Number(d.online_percentage) || 0),
+      );
       const maxOnlineSlots = Math.max(0, Number(d.max_online_slots) || 0);
       if (!DAYS_OF_WEEK.includes(dayOfWeek)) continue;
       await prisma.onlineSlotConfig.upsert({
@@ -406,7 +461,9 @@ api.put(
 api.get("/scheduling-config/availability", requireAuth, async (req, res) => {
   const { unit, date } = req.query;
   if (!unit || !date)
-    return res.status(400).json({ detail: "Parâmetros 'unit' e 'date' são obrigatórios" });
+    return res
+      .status(400)
+      .json({ detail: "Parâmetros 'unit' e 'date' são obrigatórios" });
   const d = new Date(date + "T00:00:00");
   const config = await prisma.onlineSlotConfig.findUnique({
     where: { unit_dayOfWeek: { unit, dayOfWeek: d.getDay() } },
@@ -473,14 +530,12 @@ api.post(
       },
     });
     if (existing && !justification)
-      return res
-        .status(409)
-        .json({
-          detail: {
-            error: "conflict",
-            message: `Paciente já possui receita ativa para ${active_substance}. Selecione uma justificativa.`,
-          },
-        });
+      return res.status(409).json({
+        detail: {
+          error: "conflict",
+          message: `Paciente já possui receita ativa para ${active_substance}. Selecione uma justificativa.`,
+        },
+      });
     if (existing && justification)
       await prisma.prescription.update({
         where: { id: existing.id },
@@ -652,7 +707,8 @@ api.get(
     const faltas = all.filter((a) => a.status === "faltou").length;
     const compareceu = all.filter((a) => a.status === "compareceu").length;
 
-    const bySpec = {}, byUnit = {};
+    const bySpec = {},
+      byUnit = {};
     for (const a of all) {
       bySpec[a.specialty] ??= { total: 0, faltas: 0 };
       bySpec[a.specialty].total++;
@@ -700,17 +756,25 @@ api.get(
       ((scores.filter((s) => s >= 9).length -
         scores.filter((s) => s <= 6).length) /
         scores.length) *
-      100,
+        100,
     );
 
     res.json({
       kpis: {
         total_patients: await prisma.patient.count(),
         total_appointments: totalAppts,
-        absenteeism_rate: totalAppts ? +((faltas / totalAppts) * 100).toFixed(1) : 0,
-        adherence_rate: totalAppts ? +((compareceu / totalAppts) * 100).toFixed(1) : 0,
-        exams_pending: await prisma.exam.count({ where: { status: "pendente" } }),
-        exams_abandoned: await prisma.exam.count({ where: { status: "pronto" } }),
+        absenteeism_rate: totalAppts
+          ? +((faltas / totalAppts) * 100).toFixed(1)
+          : 0,
+        adherence_rate: totalAppts
+          ? +((compareceu / totalAppts) * 100).toFixed(1)
+          : 0,
+        exams_pending: await prisma.exam.count({
+          where: { status: "pendente" },
+        }),
+        exams_abandoned: await prisma.exam.count({
+          where: { status: "pronto" },
+        }),
         total_prescriptions: await prisma.prescription.count(),
         nps,
       },
@@ -747,381 +811,532 @@ api.get(
    MÓDULO DE CONTROLE DE ESTOQUE (MEDICAMENTOS)
    ========================================== */
 
-api.post("/stock/entry", requireAuth, requireRoles("atendente"), async (req, res) => {
-  const user = req.user;
-  if (!user.healthUnitId) {
-    return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
-  }
+api.post(
+  "/stock/entry",
+  requireAuth,
+  requireRoles("atendente"),
+  async (req, res) => {
+    const user = req.user;
+    if (!user.healthUnitId) {
+      return res
+        .status(400)
+        .json({ detail: "Atendente sem unidade de saúde associada" });
+    }
 
-  const medicineId = req.body.medicine_id || req.body.medicineId;
-  const qty = Number(req.body.quantity || 0);
-  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
-  const dosage = (req.body.dosage || "").toString().trim();
-  const lot = (req.body.lot || "").toString().trim();
-  const notes = (req.body.notes || "").toString().trim();
+    const medicineId = req.body.medicine_id || req.body.medicineId;
+    const qty = Number(req.body.quantity || 0);
+    const medicineName = (
+      req.body.medicine_name ||
+      req.body.medicineName ||
+      medicineId ||
+      ""
+    )
+      .toString()
+      .trim();
+    const dosage = (req.body.dosage || "").toString().trim();
+    const lot = (req.body.lot || "").toString().trim();
+    const notes = (req.body.notes || "").toString().trim();
 
-  if (!medicineId || qty <= 0) {
-    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
-  }
-
-  const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "ENTRY" });
-  const [stock] = await prisma.$transaction([
-    prisma.medicineStock.upsert({
-      where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
-      update: { quantity: { increment: qty } },
-      create: { healthUnitId: user.healthUnitId, medicineId, quantity: qty },
-    }),
-    prisma.stockTransaction.create({
-      data: {
-        healthUnitId: user.healthUnitId,
-        medicineId,
-        medicineName: medicineName || medicineId,
-        medicineDetails,
-        userId: user.id,
-        type: "ENTRY",
-        quantity: qty,
-      },
-    }),
-  ]);
-
-  await audit(user, "stock.entry", stock.id, {
-    medicineId,
-    medicineName: medicineName || medicineId,
-    quantity: qty,
-    unitId: user.healthUnitId,
-    details: JSON.parse(medicineDetails),
-  });
-
-  res.json({ ok: true, stock });
-});
-
-api.post("/stock/exit", requireAuth, requireRoles("atendente"), async (req, res) => {
-  const user = req.user;
-  if (!user.healthUnitId) {
-    return res.status(400).json({ detail: "Atendente sem unidade de saúde associada" });
-  }
-
-  const medicineId = req.body.medicine_id || req.body.medicineId;
-  const qty = Number(req.body.quantity || 0);
-  const medicineName = (req.body.medicine_name || req.body.medicineName || medicineId || "").toString().trim();
-  const dosage = (req.body.dosage || "").toString().trim();
-  const lot = (req.body.lot || "").toString().trim();
-  const notes = (req.body.notes || "").toString().trim();
-
-  if (!medicineId || qty <= 0) {
-    return res.status(400).json({ detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios" });
-  }
-
-  try {
-    const medicineDetails = JSON.stringify({ medicineId, medicineName, dosage, lot, notes, type: "EXIT" });
-    const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.medicineStock.updateMany({
-        where: { healthUnitId: user.healthUnitId, medicineId, quantity: { gte: qty } },
-        data: { quantity: { decrement: qty } },
+    if (!medicineId || qty <= 0) {
+      return res.status(400).json({
+        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
       });
-      if (result.count === 0) {
-        const err = new Error("Estoque insuficiente");
-        err.code = "INSUFFICIENT_STOCK";
-        throw err;
-      }
-      await tx.stockTransaction.create({
+    }
+
+    const medicineDetails = JSON.stringify({
+      medicineId,
+      medicineName,
+      dosage,
+      lot,
+      notes,
+      type: "ENTRY",
+    });
+    const [stock] = await prisma.$transaction([
+      prisma.medicineStock.upsert({
+        where: {
+          healthUnitId_medicineId: {
+            healthUnitId: user.healthUnitId,
+            medicineId,
+          },
+        },
+        update: { quantity: { increment: qty } },
+        create: { healthUnitId: user.healthUnitId, medicineId, quantity: qty },
+      }),
+      prisma.stockTransaction.create({
         data: {
           healthUnitId: user.healthUnitId,
           medicineId,
           medicineName: medicineName || medicineId,
           medicineDetails,
           userId: user.id,
-          type: "EXIT",
+          type: "ENTRY",
           quantity: qty,
         },
-      });
-      return tx.medicineStock.findUnique({
-        where: { healthUnitId_medicineId: { healthUnitId: user.healthUnitId, medicineId } },
-      });
-    });
+      }),
+    ]);
 
-    await audit(user, "stock.exit", updated.id, {
+    await audit(user, "stock.entry", stock.id, {
       medicineId,
       medicineName: medicineName || medicineId,
       quantity: qty,
       unitId: user.healthUnitId,
       details: JSON.parse(medicineDetails),
     });
-    res.json({ ok: true, stock: updated });
-  } catch (e) {
-    if (e.code === "INSUFFICIENT_STOCK") {
-      return res.status(400).json({ detail: "Estoque insuficiente" });
+
+    res.json({ ok: true, stock });
+  },
+);
+
+api.post(
+  "/stock/exit",
+  requireAuth,
+  requireRoles("atendente"),
+  async (req, res) => {
+    const user = req.user;
+    if (!user.healthUnitId) {
+      return res
+        .status(400)
+        .json({ detail: "Atendente sem unidade de saúde associada" });
     }
-    throw e;
-  }
-});
 
-api.get("/stock/transactions", requireAuth, requireRoles("atendente", "secretario", "admin"), async (req, res) => {
-  const transactions = await prisma.stockTransaction.findMany({
-    include: { healthUnit: true, user: { select: { id: true, name: true, role: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+    const medicineId = req.body.medicine_id || req.body.medicineId;
+    const qty = Number(req.body.quantity || 0);
+    const medicineName = (
+      req.body.medicine_name ||
+      req.body.medicineName ||
+      medicineId ||
+      ""
+    )
+      .toString()
+      .trim();
+    const dosage = (req.body.dosage || "").toString().trim();
+    const lot = (req.body.lot || "").toString().trim();
+    const notes = (req.body.notes || "").toString().trim();
 
-  res.json(
-    transactions.map((t) => ({
-      id: t.id,
-      type: t.type,
-      quantity: t.quantity,
-      createdAt: t.createdAt.toISOString(),
-      medicineId: t.medicineId,
-      medicineName: t.medicineName,
-      medicineDetails: t.medicineDetails ? JSON.parse(t.medicineDetails) : {},
-      user: t.user,
-      unit: t.healthUnit?.name || "Sem unidade",
-    })),
-  );
-});
+    if (!medicineId || qty <= 0) {
+      return res.status(400).json({
+        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
+      });
+    }
+
+    try {
+      const medicineDetails = JSON.stringify({
+        medicineId,
+        medicineName,
+        dosage,
+        lot,
+        notes,
+        type: "EXIT",
+      });
+      const updated = await prisma.$transaction(async (tx) => {
+        const result = await tx.medicineStock.updateMany({
+          where: {
+            healthUnitId: user.healthUnitId,
+            medicineId,
+            quantity: { gte: qty },
+          },
+          data: { quantity: { decrement: qty } },
+        });
+        if (result.count === 0) {
+          const err = new Error("Estoque insuficiente");
+          err.code = "INSUFFICIENT_STOCK";
+          throw err;
+        }
+        await tx.stockTransaction.create({
+          data: {
+            healthUnitId: user.healthUnitId,
+            medicineId,
+            medicineName: medicineName || medicineId,
+            medicineDetails,
+            userId: user.id,
+            type: "EXIT",
+            quantity: qty,
+          },
+        });
+        return tx.medicineStock.findUnique({
+          where: {
+            healthUnitId_medicineId: {
+              healthUnitId: user.healthUnitId,
+              medicineId,
+            },
+          },
+        });
+      });
+
+      await audit(user, "stock.exit", updated.id, {
+        medicineId,
+        medicineName: medicineName || medicineId,
+        quantity: qty,
+        unitId: user.healthUnitId,
+        details: JSON.parse(medicineDetails),
+      });
+      res.json({ ok: true, stock: updated });
+    } catch (e) {
+      if (e.code === "INSUFFICIENT_STOCK") {
+        return res.status(400).json({ detail: "Estoque insuficiente" });
+      }
+      throw e;
+    }
+  },
+);
+
+api.get(
+  "/stock/transactions",
+  requireAuth,
+  requireRoles("atendente", "secretario", "admin"),
+  async (req, res) => {
+    const transactions = await prisma.stockTransaction.findMany({
+      include: {
+        healthUnit: true,
+        user: { select: { id: true, name: true, role: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    res.json(
+      transactions.map((t) => ({
+        id: t.id,
+        type: t.type,
+        quantity: t.quantity,
+        createdAt: t.createdAt.toISOString(),
+        medicineId: t.medicineId,
+        medicineName: t.medicineName,
+        medicineDetails: t.medicineDetails ? JSON.parse(t.medicineDetails) : {},
+        user: t.user,
+        unit: t.healthUnit?.name || "Sem unidade",
+      })),
+    );
+  },
+);
 
 const LOW_STOCK_THRESHOLD = 5;
 
-api.get("/secretario/dashboard-stock", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  const units = await prisma.healthUnit.findMany({
-    include: { stocks: { orderBy: { medicineId: "asc" } } },
-    orderBy: { name: "asc" },
-  });
-  const out = units.map(u => ({
-    id: u.id,
-    name: u.name,
-    stocks: u.stocks.map(s => ({
-      medicineId: s.medicineId,
-      quantity: s.quantity,
-      lowStock: s.quantity > 0 && s.quantity <= LOW_STOCK_THRESHOLD,
-      outOfStock: s.quantity <= 0,
-    })),
-  }));
-  res.json(out);
-});
+api.get(
+  "/secretario/dashboard-stock",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const units = await prisma.healthUnit.findMany({
+      include: { stocks: { orderBy: { medicineId: "asc" } } },
+      orderBy: { name: "asc" },
+    });
+    const out = units.map((u) => ({
+      id: u.id,
+      name: u.name,
+      stocks: u.stocks.map((s) => ({
+        medicineId: s.medicineId,
+        quantity: s.quantity,
+        lowStock: s.quantity > 0 && s.quantity <= LOW_STOCK_THRESHOLD,
+        outOfStock: s.quantity <= 0,
+      })),
+    }));
+    res.json(out);
+  },
+);
 
 /* ==========================================
    ROTA DE AUDITORIA DE SISTEMA
    ========================================== */
-api.get("/audit-logs", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  const logs = await prisma.auditLog.findMany({
-    orderBy: { timestamp: "desc" },
-    take: 200,
-  });
+api.get(
+  "/audit-logs",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { timestamp: "desc" },
+      take: 200,
+    });
 
-  res.json(
-    logs.map((l) => ({
-      id: l.id,
-      action: l.action,
-      target: l.target,
-      user_name: l.userName,
-      user_role: l.userRole,
-      timestamp: l.timestamp.toISOString(),
-      details: l.details ? JSON.parse(l.details) : {},
-    })),
-  );
-});
-
+    res.json(
+      logs.map((l) => ({
+        id: l.id,
+        action: l.action,
+        target: l.target,
+        user_name: l.userName,
+        user_role: l.userRole,
+        timestamp: l.timestamp.toISOString(),
+        details: l.details ? JSON.parse(l.details) : {},
+      })),
+    );
+  },
+);
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-api.get("/ai/opcoes", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  try {
-    const [medicamentos, pacientes, medicos, unidades] = await Promise.all([
-      prisma.prescription.findMany({ select: { medication: true }, distinct: ["medication"], orderBy: { medication: "asc" } }),
-      prisma.patient.findMany({ select: { id: true, name: true, cpf: true }, orderBy: { name: "asc" } }),
-      prisma.user.findMany({ where: { role: "medico" }, select: { id: true, name: true, specialty: true }, orderBy: { name: "asc" } }),
-      prisma.appointment.findMany({ select: { unit: true }, distinct: ["unit"], orderBy: { unit: "asc" } }),
-    ]);
-    res.json({
-      medicamentos: medicamentos.map(m => m.medication),
-      pacientes: pacientes.map(p => ({ id: p.id, label: `${p.name} · ${p.cpf}` })),
-      medicos: medicos.map(m => ({ id: m.id, label: `${m.name} · ${m.specialty}` })),
-      unidades: unidades.map(u => u.unit),
-    });
-  } catch (e) {
-    console.error("Erro ao consultar o Gemini. Entre em contato com o suporte.", e);
-    res.status(500).json({ detail: "Erro ao consultar a IA."});
-  }
-});
-
-//  Código foi comentado por que estava dando problema ao subir para o git. 
-
-api.post("/ai/insights", requireAuth, requireRoles("secretario", "admin"), async (req, res) => {
-  const { filtro, valor } = req.body;
-
-  if (!filtro || !valor) return res.status(400).json({ detail: "filtro e valor são obrigatórios" });
-
-  const hoje = new Date();
-  const dozeAtras = new Date(hoje);
-  dozeAtras.setMonth(dozeAtras.getMonth() - 12);
-
-  const ESTACOES = {
-    verao: { meses: [11, 0, 1], label: "Verão (Dez-Jan-Fev)" },
-    outono: { meses: [2, 3, 4], label: "Outono (Mar-Abr-Mai)" },
-    inverno: { meses: [5, 6, 7], label: "Inverno (Jun-Jul-Ago)" },
-    primavera: { meses: [8, 9, 10], label: "Primavera (Set-Out-Nov)" },
-  };
-
-  let contexto = "";
-
-  if (filtro === "estacao") {
-    const estacao = ESTACOES[valor];
-    if (!estacao) return res.status(400).json({ detail: "Estação inválida" });
-
-    const appointments = await prisma.appointment.findMany({
-      where: { scheduledAt: { gte: dozeAtras } },
-      select: { scheduledAt: true, specialty: true, status: true, unit: true },
-    });
-
-    const filtrados = appointments.filter(a => estacao.meses.includes(a.scheduledAt.getMonth()));
-    const porEsp = {};
-    for (const a of filtrados) {
-      porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
+api.get(
+  "/ai/opcoes",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    try {
+      const [medicamentos, pacientes, medicos, unidades] = await Promise.all([
+        prisma.prescription.findMany({
+          select: { medication: true },
+          distinct: ["medication"],
+          orderBy: { medication: "asc" },
+        }),
+        prisma.patient.findMany({
+          select: { id: true, name: true, cpf: true },
+          orderBy: { name: "asc" },
+        }),
+        prisma.user.findMany({
+          where: { role: "medico" },
+          select: { id: true, name: true, specialty: true },
+          orderBy: { name: "asc" },
+        }),
+        prisma.appointment.findMany({
+          select: { unit: true },
+          distinct: ["unit"],
+          orderBy: { unit: "asc" },
+        }),
+      ]);
+      res.json({
+        medicamentos: medicamentos.map((m) => m.medication),
+        pacientes: pacientes.map((p) => ({
+          id: p.id,
+          label: `${p.name} · ${p.cpf}`,
+        })),
+        medicos: medicos.map((m) => ({
+          id: m.id,
+          label: `${m.name} · ${m.specialty}`,
+        })),
+        unidades: unidades.map((u) => u.unit),
+      });
+    } catch (e) {
+      console.error(
+        "Erro ao consultar o Gemini. Entre em contato com o suporte.",
+        e,
+      );
+      res.status(500).json({ detail: "Erro ao consultar a IA." });
     }
-    const faltas = filtrados.filter(a => a.status === "faltou").length;
+  },
+);
 
-    const prescriptions = await prisma.prescription.findMany({
-      where: { createdAt: { gte: dozeAtras } },
-      select: { medication: true, createdAt: true },
-    });
-    const medsFiltrados = prescriptions.filter(p => estacao.meses.includes(p.createdAt.getMonth()));
-    const medMap = {};
-    for (const p of medsFiltrados) medMap[p.medication] = (medMap[p.medication] || 0) + 1;
-    const topMeds = Object.entries(medMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([m, c]) => `${m}:${c}`).join(", ");
+//  Código foi comentado por que estava dando problema ao subir para o git.
 
-    contexto = `Estacao: ${estacao.label}. Total consultas: ${filtrados.length}. Por especialidade: ${JSON.stringify(porEsp)}. Faltas: ${faltas}. Top medicamentos prescritos: ${topMeds}.`;
-  }
+api.post(
+  "/ai/insights",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const { filtro, valor } = req.body;
 
-  else if (filtro === "medicamento") {
-    const prescriptions = await prisma.prescription.findMany({
-      where: { medication: valor, createdAt: { gte: dozeAtras } },
-      select: { createdAt: true, active: true, patientId: true },
-    });
+    if (!filtro || !valor)
+      return res
+        .status(400)
+        .json({ detail: "filtro e valor são obrigatórios" });
 
-    const porMes = {};
-    for (const p of prescriptions) {
-      const key = p.createdAt.toISOString().slice(0, 7);
-      porMes[key] = (porMes[key] || 0) + 1;
-    }
-    const pacientesUnicos = new Set(prescriptions.map(p => p.patientId)).size;
+    const hoje = new Date();
+    const dozeAtras = new Date(hoje);
+    dozeAtras.setMonth(dozeAtras.getMonth() - 12);
 
-    contexto = `Medicamento: ${valor}. Prescricoes por mes: ${JSON.stringify(porMes)}. Total prescricoes: ${prescriptions.length}. Pacientes unicos: ${pacientesUnicos}. Receitas ativas: ${prescriptions.filter(p => p.active).length}.`;
-  }
+    const ESTACOES = {
+      verao: { meses: [11, 0, 1], label: "Verão (Dez-Jan-Fev)" },
+      outono: { meses: [2, 3, 4], label: "Outono (Mar-Abr-Mai)" },
+      inverno: { meses: [5, 6, 7], label: "Inverno (Jun-Jul-Ago)" },
+      primavera: { meses: [8, 9, 10], label: "Primavera (Set-Out-Nov)" },
+    };
 
-  else if (filtro === "paciente") {
-    const [appointments, prescriptions, exams] = await Promise.all([
-      prisma.appointment.findMany({
-        where: { patientId: valor, scheduledAt: { gte: dozeAtras } },
-        select: { scheduledAt: true, specialty: true, status: true },
-      }),
-      prisma.prescription.findMany({
-        where: { patientId: valor },
-        select: { medication: true, createdAt: true, active: true },
-      }),
-      prisma.exam.findMany({
-        where: { patientId: valor },
-        select: { exam: true, status: true, createdAt: true },
-      }),
-    ]);
+    let contexto = "";
 
-    const porMes = {};
-    for (const a of appointments) {
-      const key = a.scheduledAt.toISOString().slice(0, 7);
-      porMes[key] = (porMes[key] || 0) + 1;
-    }
-    const especialidades = {};
-    for (const a of appointments) especialidades[a.specialty] = (especialidades[a.specialty] || 0) + 1;
-    const meds = prescriptions.map(p => p.medication).join(", ");
+    if (filtro === "estacao") {
+      const estacao = ESTACOES[valor];
+      if (!estacao) return res.status(400).json({ detail: "Estação inválida" });
 
-    contexto = `Paciente anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Especialidades mais consultadas: ${JSON.stringify(especialidades)}. Faltas: ${appointments.filter(a => a.status === "faltou").length}. Medicamentos: ${meds}. Exames: ${exams.map(e => e.exam).join(", ")}.`;
-  }
+      const appointments = await prisma.appointment.findMany({
+        where: { scheduledAt: { gte: dozeAtras } },
+        select: {
+          scheduledAt: true,
+          specialty: true,
+          status: true,
+          unit: true,
+        },
+      });
 
-  else if (filtro === "unidade") {
-    const appointments = await prisma.appointment.findMany({
-      where: { unit: valor, scheduledAt: { gte: dozeAtras } },
-      select: { scheduledAt: true, specialty: true, status: true },
-    });
+      const filtrados = appointments.filter((a) =>
+        estacao.meses.includes(a.scheduledAt.getMonth()),
+      );
+      const porEsp = {};
+      for (const a of filtrados) {
+        porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
+      }
+      const faltas = filtrados.filter((a) => a.status === "faltou").length;
 
-    const porMes = {};
-    for (const a of appointments) {
-      const key = a.scheduledAt.toISOString().slice(0, 7);
-      porMes[key] = (porMes[key] || 0) + 1;
-    }
-    const porEsp = {};
-    for (const a of appointments) porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
-    const faltas = appointments.filter(a => a.status === "faltou").length;
-
-    contexto = `Unidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por especialidade: ${JSON.stringify(porEsp)}. Total: ${appointments.length}. Faltas: ${faltas}.`;
-  }
-
-  else if (filtro === "especialidade") {
-    const appointments = await prisma.appointment.findMany({
-      where: { specialty: valor, scheduledAt: { gte: dozeAtras } },
-      select: { scheduledAt: true, status: true, unit: true },
-    });
-
-    const porMes = {};
-    for (const a of appointments) {
-      const key = a.scheduledAt.toISOString().slice(0, 7);
-      porMes[key] = (porMes[key] || 0) + 1;
-    }
-    const porUnidade = {};
-    for (const a of appointments) porUnidade[a.unit] = (porUnidade[a.unit] || 0) + 1;
-
-    contexto = `Especialidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por unidade: ${JSON.stringify(porUnidade)}. Faltas: ${appointments.filter(a => a.status === "faltou").length}.`;
-  }
-
-  else if (filtro === "medico") {
-    const [appointments, prescriptions] = await Promise.all([
-      prisma.appointment.findMany({
-        where: { doctorId: valor, scheduledAt: { gte: dozeAtras } },
-        select: { scheduledAt: true, status: true, specialty: true },
-      }),
-      prisma.prescription.findMany({
-        where: { doctorId: valor, createdAt: { gte: dozeAtras } },
+      const prescriptions = await prisma.prescription.findMany({
+        where: { createdAt: { gte: dozeAtras } },
         select: { medication: true, createdAt: true },
-      }),
-    ]);
+      });
+      const medsFiltrados = prescriptions.filter((p) =>
+        estacao.meses.includes(p.createdAt.getMonth()),
+      );
+      const medMap = {};
+      for (const p of medsFiltrados)
+        medMap[p.medication] = (medMap[p.medication] || 0) + 1;
+      const topMeds = Object.entries(medMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([m, c]) => `${m}:${c}`)
+        .join(", ");
 
-    const porMes = {};
-    for (const a of appointments) {
-      const key = a.scheduledAt.toISOString().slice(0, 7);
-      porMes[key] = (porMes[key] || 0) + 1;
+      contexto = `Estacao: ${estacao.label}. Total consultas: ${filtrados.length}. Por especialidade: ${JSON.stringify(porEsp)}. Faltas: ${faltas}. Top medicamentos prescritos: ${topMeds}.`;
+    } else if (filtro === "medicamento") {
+      const prescriptions = await prisma.prescription.findMany({
+        where: { medication: valor, createdAt: { gte: dozeAtras } },
+        select: { createdAt: true, active: true, patientId: true },
+      });
+
+      const porMes = {};
+      for (const p of prescriptions) {
+        const key = p.createdAt.toISOString().slice(0, 7);
+        porMes[key] = (porMes[key] || 0) + 1;
+      }
+      const pacientesUnicos = new Set(prescriptions.map((p) => p.patientId))
+        .size;
+
+      contexto = `Medicamento: ${valor}. Prescricoes por mes: ${JSON.stringify(porMes)}. Total prescricoes: ${prescriptions.length}. Pacientes unicos: ${pacientesUnicos}. Receitas ativas: ${prescriptions.filter((p) => p.active).length}.`;
+    } else if (filtro === "paciente") {
+      const [appointments, prescriptions, exams] = await Promise.all([
+        prisma.appointment.findMany({
+          where: { patientId: valor, scheduledAt: { gte: dozeAtras } },
+          select: { scheduledAt: true, specialty: true, status: true },
+        }),
+        prisma.prescription.findMany({
+          where: { patientId: valor },
+          select: { medication: true, createdAt: true, active: true },
+        }),
+        prisma.exam.findMany({
+          where: { patientId: valor },
+          select: { exam: true, status: true, createdAt: true },
+        }),
+      ]);
+
+      const porMes = {};
+      for (const a of appointments) {
+        const key = a.scheduledAt.toISOString().slice(0, 7);
+        porMes[key] = (porMes[key] || 0) + 1;
+      }
+      const especialidades = {};
+      for (const a of appointments)
+        especialidades[a.specialty] = (especialidades[a.specialty] || 0) + 1;
+      const meds = prescriptions.map((p) => p.medication).join(", ");
+
+      contexto = `Paciente anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Especialidades mais consultadas: ${JSON.stringify(especialidades)}. Faltas: ${appointments.filter((a) => a.status === "faltou").length}. Medicamentos: ${meds}. Exames: ${exams.map((e) => e.exam).join(", ")}.`;
+    } else if (filtro === "unidade") {
+      const appointments = await prisma.appointment.findMany({
+        where: { unit: valor, scheduledAt: { gte: dozeAtras } },
+        select: { scheduledAt: true, specialty: true, status: true },
+      });
+
+      const porMes = {};
+      for (const a of appointments) {
+        const key = a.scheduledAt.toISOString().slice(0, 7);
+        porMes[key] = (porMes[key] || 0) + 1;
+      }
+      const porEsp = {};
+      for (const a of appointments)
+        porEsp[a.specialty] = (porEsp[a.specialty] || 0) + 1;
+      const faltas = appointments.filter((a) => a.status === "faltou").length;
+
+      contexto = `Unidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por especialidade: ${JSON.stringify(porEsp)}. Total: ${appointments.length}. Faltas: ${faltas}.`;
+    } else if (filtro === "especialidade") {
+      const appointments = await prisma.appointment.findMany({
+        where: { specialty: valor, scheduledAt: { gte: dozeAtras } },
+        select: { scheduledAt: true, status: true, unit: true },
+      });
+
+      const porMes = {};
+      for (const a of appointments) {
+        const key = a.scheduledAt.toISOString().slice(0, 7);
+        porMes[key] = (porMes[key] || 0) + 1;
+      }
+      const porUnidade = {};
+      for (const a of appointments)
+        porUnidade[a.unit] = (porUnidade[a.unit] || 0) + 1;
+
+      contexto = `Especialidade: ${valor}. Consultas por mes: ${JSON.stringify(porMes)}. Por unidade: ${JSON.stringify(porUnidade)}. Faltas: ${appointments.filter((a) => a.status === "faltou").length}.`;
+    } else if (filtro === "medico") {
+      const [appointments, prescriptions] = await Promise.all([
+        prisma.appointment.findMany({
+          where: { doctorId: valor, scheduledAt: { gte: dozeAtras } },
+          select: { scheduledAt: true, status: true, specialty: true },
+        }),
+        prisma.prescription.findMany({
+          where: { doctorId: valor, createdAt: { gte: dozeAtras } },
+          select: { medication: true, createdAt: true },
+        }),
+      ]);
+
+      const porMes = {};
+      for (const a of appointments) {
+        const key = a.scheduledAt.toISOString().slice(0, 7);
+        porMes[key] = (porMes[key] || 0) + 1;
+      }
+      const medMap = {};
+      for (const p of prescriptions)
+        medMap[p.medication] = (medMap[p.medication] || 0) + 1;
+      const topMeds = Object.entries(medMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([m, c]) => `${m}:${c}`)
+        .join(", ");
+
+      contexto = `Medico anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Total: ${appointments.length}. Faltas: ${appointments.filter((a) => a.status === "faltou").length}. Top medicamentos prescritos: ${topMeds}.`;
+    } else {
+      return res.status(400).json({
+        detail:
+          "Filtro inválido. Use: estacao, medicamento, paciente, unidade, especialidade, medico",
+      });
     }
-    const medMap = {};
-    for (const p of prescriptions) medMap[p.medication] = (medMap[p.medication] || 0) + 1;
-    const topMeds = Object.entries(medMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([m, c]) => `${m}:${c}`).join(", ");
 
-    contexto = `Medico anonimizado. Consultas por mes: ${JSON.stringify(porMes)}. Total: ${appointments.length}. Faltas: ${appointments.filter(a => a.status === "faltou").length}. Top medicamentos prescritos: ${topMeds}.`;
-  }
-
-  else {
-    return res.status(400).json({ detail: "Filtro inválido. Use: estacao, medicamento, paciente, unidade, especialidade, medico" });
-  }
-
-  const prompt = `Analise estes dados de saude publica municipal brasileira. Responda APENAS com JSON valido, sem texto adicional, sem markdown.
+    const prompt = `Analise estes dados de saude publica municipal brasileira. Responda APENAS com JSON valido, sem texto adicional, sem markdown.
 
 DADOS: ${contexto}
 
 Formato obrigatorio:
 {"padroes":[{"titulo":"string","descricao":"string","impacto":"alto|medio|baixo"}],"previsoes":[{"periodo":"string","descricao":"string","confianca":"alta|media|baixa"}],"recomendacoes":[{"titulo":"string","descricao":"string"}],"resumo":"string"}`;
 
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.status(500).json({ detail: "Resposta inválida da IA" });
-    const parsed = JSON.parse(jsonMatch[0]);
-    await audit(req.user, "ai.insights", "gemini", { filtro, valor });
-    res.json({ ok: true, filtro, data: parsed });
-  } catch (e) {
-    console.error("Erro ao consultar o Gemini. Entre em contato com o suporte.", e);
-    res.status(500).json({ detail: "Erro ao consultar a IA."});
-  }
-});
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-lite",
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch)
+        return res.status(500).json({ detail: "Resposta inválida da IA" });
+      const parsed = JSON.parse(jsonMatch[0]);
+      await audit(req.user, "ai.insights", "gemini", { filtro, valor });
+      res.json({ ok: true, filtro, data: parsed });
+    } catch (e) {
+      console.error(
+        "Erro ao consultar o Gemini. Entre em contato com o suporte.",
+        e,
+      );
+      res.status(500).json({ detail: "Erro ao consultar a IA." });
+    }
+  },
+);
 
-const CID = [
+// Carrega referências de `backend/data/{cid,tuss,sigtap}.json` quando disponíveis.
+const dataDir = path.join(process.cwd(), "data");
+function loadRef(name, fallback) {
+  try {
+    const file = path.join(dataDir, `${name}.json`);
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      console.warn(`Ref ${name} inválida: não é um array`);
+    }
+  } catch (e) {
+    console.warn(`Erro ao carregar ref ${name}:`, e.message || e);
+  }
+  return fallback;
+}
+
+const DEFAULT_CID = [
   { code: "I10", desc: "Hipertensão essencial" },
   { code: "E11", desc: "Diabetes tipo 2" },
   { code: "F32", desc: "Episódios depressivos" },
@@ -1130,14 +1345,14 @@ const CID = [
   { code: "K21", desc: "Refluxo gastroesofágico" },
   { code: "M54", desc: "Dorsalgia" },
 ];
-const TUSS = [
+const DEFAULT_TUSS = [
   { code: "10101012", desc: "Consulta em consultório" },
   { code: "10103011", desc: "Consulta pré-natal" },
   { code: "40202100", desc: "Hemograma completo" },
   { code: "40301974", desc: "Glicemia de jejum" },
   { code: "40304035", desc: "Colesterol total" },
 ];
-const SIGTAP = [
+const DEFAULT_SIGTAP = [
   { code: "02.02.01.038-0", desc: "Hemograma completo" },
   { code: "02.02.01.014-9", desc: "Glicemia em jejum" },
   { code: "02.02.01.019-0", desc: "Colesterol total" },
@@ -1146,14 +1361,18 @@ const SIGTAP = [
   { code: "02.05.01.004-1", desc: "Radiografia de tórax" },
   { code: "02.11.06.008-8", desc: "Ultrassonografia abdominal" },
 ];
+
+const CID = loadRef("cid", DEFAULT_CID);
+const TUSS = loadRef("tuss", DEFAULT_TUSS);
+const SIGTAP = loadRef("sigtap", DEFAULT_SIGTAP);
 const search = (arr, q) =>
   !q
     ? arr
     : arr.filter(
-      (c) =>
-        c.code.toLowerCase().includes(q.toLowerCase()) ||
-        c.desc.toLowerCase().includes(q.toLowerCase()),
-    );
+        (c) =>
+          c.code.toLowerCase().includes(q.toLowerCase()) ||
+          c.desc.toLowerCase().includes(q.toLowerCase()),
+      );
 api.get("/refs/cid", (req, res) => res.json(search(CID, req.query.q)));
 api.get("/refs/tuss", (req, res) => res.json(search(TUSS, req.query.q)));
 api.get("/refs/sigtap", (req, res) => res.json(search(SIGTAP, req.query.q)));
@@ -1168,11 +1387,9 @@ app.use((err, req, res, next) => {
     name.includes("PrismaClientValidation") ||
     name.includes("PrismaClientKnownRequest")
   )
-    return res
-      .status(400)
-      .json({
-        detail: err.message?.split("\n").pop()?.trim() || "Dados inválidos",
-      });
+    return res.status(400).json({
+      detail: err.message?.split("\n").pop()?.trim() || "Dados inválidos",
+    });
   res.status(500).json({ detail: err?.message || "Erro interno" });
 });
 

@@ -10,12 +10,26 @@ export default function AtendenteDashboard() {
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [q, setQ] = useState("");
+  const [patientQuery, setPatientQuery] = useState("");
   const [showApptForm, setShowApptForm] = useState(false);
   const [showPatientForm, setShowPatientForm] = useState(false);
-  const [medicos, setMedicos] = useState([]);
-  const [ap, setAp] = useState({ patient_id: "", doctor_id: "", specialty: "Clínica Geral", scheduled_at: "", priority: "normal", unit: "UBS Central", modality: "presencial" });
+  const [ap, setAp] = useState({
+    patient_id: "",
+    specialty: "Clínica Geral",
+    scheduled_at: "",
+    priority: "normal",
+    unit: "UBS Central",
+    modality: "presencial",
+  });
   const [onlineAvailability, setOnlineAvailability] = useState(null);
-  const [np, setNp] = useState({ name: "", cpf: "", birth_date: "2000-01-01", phone: "", address: "", lgpd_accepted: true });
+  const [np, setNp] = useState({
+    name: "",
+    cpf: "",
+    birth_date: "2000-01-01",
+    phone: "",
+    address: "",
+    lgpd_accepted: true,
+  });
   const [filterName, setFilterName] = useState("");
   const [filterStartTime, setFilterStartTime] = useState("");
   const [filterEndTime, setFilterEndTime] = useState("");
@@ -26,18 +40,43 @@ export default function AtendenteDashboard() {
     const today = new Date().toISOString().slice(0, 10);
     const a = await api.get(`/appointments?date=${today}`);
     setAppts(a.data);
-    const u = await api.get("/users");
-    setMedicos(u.data.filter(x => x.role === "medico"));
   };
 
-  useEffect(() => { load(); }, []);
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [q]);
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => {
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const selectedPatient = patients.find((p) => p.id === ap.patient_id);
+  const patientSuggestions = patients
+    .filter((p) => !p.blocked_online)
+    .filter((p) => {
+      const query = patientQuery.trim().toLowerCase();
+      if (!query) return false;
+      return p.name.toLowerCase().includes(query) || p.cpf.includes(query);
+    })
+    .slice(0, 6);
+
+  const openApptForm = () => {
+    setPatientQuery("");
+    setAp({ ...ap, patient_id: "" });
+    setShowApptForm(true);
+  };
 
   // Consulta a disponibilidade de vagas online sempre que unidade, data ou modalidade mudam.
   useEffect(() => {
-    if (ap.modality !== "online" || !ap.scheduled_at || !ap.unit) { setOnlineAvailability(null); return; }
+    if (ap.modality !== "online" || !ap.scheduled_at || !ap.unit) {
+      setOnlineAvailability(null);
+      return;
+    }
     const date = ap.scheduled_at.slice(0, 10);
-    api.get(`/scheduling-config/availability?unit=${encodeURIComponent(ap.unit)}&date=${date}`)
+    api
+      .get(
+        `/scheduling-config/availability?unit=${encodeURIComponent(ap.unit)}&date=${date}`,
+      )
       .then((r) => setOnlineAvailability(r.data))
       .catch(() => setOnlineAvailability(null));
   }, [ap.modality, ap.scheduled_at, ap.unit]);
@@ -47,17 +86,30 @@ export default function AtendenteDashboard() {
       const iso = new Date(ap.scheduled_at).toISOString();
       await api.post("/appointments", { ...ap, scheduled_at: iso });
       toast.success("Consulta agendada");
-      setShowApptForm(false); load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Erro ao agendar"); }
+      setShowApptForm(false);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Erro ao agendar");
+    }
   };
 
   const createPatient = async () => {
     try {
       await api.post("/patients", np);
       toast.success("Paciente cadastrado");
-      setShowPatientForm(false); load();
-      setNp({ name: "", cpf: "", birth_date: "2000-01-01", phone: "", address: "", lgpd_accepted: true });
-    } catch (e) { toast.error("Erro ao cadastrar"); }
+      setShowPatientForm(false);
+      load();
+      setNp({
+        name: "",
+        cpf: "",
+        birth_date: "2000-01-01",
+        phone: "",
+        address: "",
+        lgpd_accepted: true,
+      });
+    } catch (e) {
+      toast.error("Erro ao cadastrar");
+    }
   };
 
   return (
@@ -65,13 +117,23 @@ export default function AtendenteDashboard() {
       <div className="mb-8 flex justify-between items-end">
         <div>
           <div className="overline text-[#457B9D]">Recepção · Balcão</div>
-          <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Atendimento Presencial</h1>
+          <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">
+            Atendimento Presencial
+          </h1>
         </div>
         <div className="flex gap-2">
-          <button data-testid="new-appt-btn" onClick={() => setShowApptForm(true)} className="btn-primary">
+          <button
+            data-testid="new-appt-btn"
+            onClick={openApptForm}
+            className="btn-primary"
+          >
             <Plus className="w-4 h-4 inline mr-1" /> Agendar Consulta
           </button>
-          <button data-testid="new-patient-btn" onClick={() => setShowPatientForm(true)} className="btn-secondary">
+          <button
+            data-testid="new-patient-btn"
+            onClick={() => setShowPatientForm(true)}
+            className="btn-secondary"
+          >
             <Plus className="w-4 h-4 inline mr-1" /> Novo Paciente
           </button>
         </div>
@@ -79,28 +141,58 @@ export default function AtendenteDashboard() {
 
       <div className="grid grid-cols-4 gap-4 mb-8">
         <Stat label="Pacientes na base" value={patients.length} icon={Users} />
-        <Stat label="Consultas hoje" value={appts.length} icon={Calendar} accent="#457B9D" />
-        <Stat label="Aguardando" value={appts.filter(a => a.status === "aguardando").length} accent="#E9C46A" />
-        <Stat label="Bloqueados por falta" value={patients.filter(p => p.blocked_online).length} accent="#E76F51" />
+        <Stat
+          label="Consultas hoje"
+          value={appts.length}
+          icon={Calendar}
+          accent="#457B9D"
+        />
+        <Stat
+          label="Aguardando"
+          value={appts.filter((a) => a.status === "aguardando").length}
+          accent="#E9C46A"
+        />
+        <Stat
+          label="Bloqueados por falta"
+          value={patients.filter((p) => p.blocked_online).length}
+          accent="#E76F51"
+        />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Patient search */}
         <div className="sc-card">
-          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-3">Buscar Paciente</h2>
+          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-3">
+            Buscar Paciente
+          </h2>
           <div className="relative mb-3">
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            <input data-testid="patient-Fsearch" value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="Nome ou CPF..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md text-sm" />
+            <input
+              data-testid="patient-Fsearch"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Nome ou CPF..."
+              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md text-sm"
+            />
           </div>
           <div className="max-h-96 overflow-y-auto space-y-1">
-            {patients.slice(0, 30).map(p => (
-              <div key={p.id} className="flex justify-between items-center border-b border-slate-100 py-2 text-sm" data-testid={`patient-${p.id}`}>
+            {patients.slice(0, 30).map((p) => (
+              <div
+                key={p.id}
+                className="flex justify-between items-center border-b border-slate-100 py-2 text-sm"
+                data-testid={`patient-${p.id}`}
+              >
                 <div>
                   <div className="font-semibold text-[#1D3557]">{p.name}</div>
-                  <div className="text-xs text-slate-500">{p.cpf} · {p.phone}</div>
+                  <div className="text-xs text-slate-500">
+                    {p.cpf} · {p.phone}
+                  </div>
                 </div>
-                {p.blocked_online && <span className="text-[10px] bg-[#E76F51]/10 text-[#E76F51] px-2 py-1 rounded font-bold">BLOQUEADO</span>}
+                {p.blocked_online && (
+                  <span className="text-[10px] bg-[#E76F51]/10 text-[#E76F51] px-2 py-1 rounded font-bold">
+                    BLOQUEADO
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -110,10 +202,14 @@ export default function AtendenteDashboard() {
           <div className="mb-4 border-b border-slate-100 pb-3">
             {/* Alinha o título e o botão de ordenação lado a lado no topo */}
             <div className="flex justify-between items-center w-full">
-              <h2 className="font-display font-bold text-lg text-[#1D3557] m-0">Agenda de Hoje</h2>
+              <h2 className="font-display font-bold text-lg text-[#1D3557] m-0">
+                Agenda de Hoje
+              </h2>
 
               <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                onClick={() =>
+                  setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                }
                 className="text-xs bg-slate-100 hover:bg-slate-200 text-[#1D3557] px-2.5 py-1 rounded-md font-semibold transition"
               >
                 Horário {sortOrder === "asc" ? "ASC ▲" : "DESC ▼"}
@@ -154,11 +250,16 @@ export default function AtendenteDashboard() {
           <div className="max-h-[260px] overflow-y-auto space-y-2">
             {(() => {
               // 1. Aplica os filtros de nome e horário nos dados da API
-              const filteredAppts = appts.filter(a => {
-                const matchesName = !filterName || a.patient?.name?.toLowerCase().includes(filterName.toLowerCase());
+              const filteredAppts = appts.filter((a) => {
+                const matchesName =
+                  !filterName ||
+                  a.patient?.name
+                    ?.toLowerCase()
+                    .includes(filterName.toLowerCase());
 
                 const apptTime = a.scheduled_at?.slice(11, 16); // Recorta "HH:MM" da string ISO
-                const matchesStart = !filterStartTime || apptTime >= filterStartTime;
+                const matchesStart =
+                  !filterStartTime || apptTime >= filterStartTime;
                 const matchesEnd = !filterEndTime || apptTime <= filterEndTime;
 
                 return matchesName && matchesStart && matchesEnd;
@@ -168,27 +269,43 @@ export default function AtendenteDashboard() {
               const sortedAppts = [...filteredAppts].sort((a, b) => {
                 const timeA = a.scheduled_at?.slice(11, 16) || "";
                 const timeB = b.scheduled_at?.slice(11, 16) || "";
-                return sortOrder === "asc" ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
+                return sortOrder === "asc"
+                  ? timeA.localeCompare(timeB)
+                  : timeB.localeCompare(timeA);
               });
 
               if (sortedAppts.length === 0) {
-                return <div className="text-sm text-slate-400 py-8 text-center">Nenhuma consulta encontrada.</div>;
+                return (
+                  <div className="text-sm text-slate-400 py-8 text-center">
+                    Nenhuma consulta encontrada.
+                  </div>
+                );
               }
 
               // 3. Renderiza os cards ordenados
-              return sortedAppts.map(a => (
+              return sortedAppts.map((a) => (
                 <div
                   key={a.id}
-                  onClick={() => navigate(`/medico/prontuario/${a.patient_id}?appt=${a.id}`)}
+                  onClick={() =>
+                    navigate(`/medico/prontuario/${a.patient_id}?appt=${a.id}`)
+                  }
                   className="flex justify-between items-center border border-slate-100 rounded-md p-3 text-sm hover:border-[#457B9D] hover:bg-slate-50 cursor-pointer transition"
                 >
                   <div>
-                    <div className="font-semibold text-[#1D3557]">{a.patient?.name}</div>
-                    <div className="text-xs text-slate-500">{a.specialty} · {a.unit}</div>
+                    <div className="font-semibold text-[#1D3557]">
+                      {a.patient?.name}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {a.specialty} · {a.unit}
+                    </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono-nums font-bold text-[#1D3557]">{a.scheduled_at?.slice(11, 16)}</div>
-                    <div className="text-xs capitalize text-slate-500">{a.status}</div>
+                    <div className="font-mono-nums font-bold text-[#1D3557]">
+                      {a.scheduled_at?.slice(11, 16)}
+                    </div>
+                    <div className="text-xs capitalize text-slate-500">
+                      {a.status}
+                    </div>
                   </div>
                 </div>
               ));
@@ -198,50 +315,122 @@ export default function AtendenteDashboard() {
       </div>
 
       {showApptForm && (
-        <Modal title="Agendar Consulta Presencial" onClose={() => setShowApptForm(false)}>
+        <Modal
+          title="Agendar Consulta Presencial"
+          onClose={() => setShowApptForm(false)}
+        >
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Paciente">
-              <select data-testid="ap-patient" value={ap.patient_id} onChange={(e) => setAp({ ...ap, patient_id: e.target.value })} className="inp">
-                <option value="">— Selecionar —</option>
-                {patients.filter(p => !p.blocked_online).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+            <Field label="Buscar paciente">
+              <input
+                data-testid="ap-patient-search"
+                value={patientQuery}
+                onChange={(e) => setPatientQuery(e.target.value)}
+                placeholder="Nome ou CPF"
+                className="inp"
+              />
+              {patientQuery.trim() && (
+                <div className="mt-2 border border-slate-200 rounded-lg max-h-48 overflow-y-auto bg-white">
+                  {patientSuggestions.length > 0 ? (
+                    patientSuggestions.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setAp({ ...ap, patient_id: p.id });
+                          setPatientQuery(p.name);
+                        }}
+                        className="w-full text-left px-3 py-2 border-b last:border-b-0 text-sm hover:bg-slate-50"
+                      >
+                        <div className="font-medium text-slate-800">
+                          {p.name}
+                        </div>
+                        <div className="text-xs text-slate-500">{p.cpf}</div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-slate-500">
+                      Nenhum paciente encontrado.
+                    </div>
+                  )}
+                </div>
+              )}
+              {selectedPatient && (
+                <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
+                  <div className="font-semibold text-slate-800">
+                    {selectedPatient.name}
+                  </div>
+                  <div className="text-slate-500">
+                    {selectedPatient.cpf} · {selectedPatient.phone}
+                  </div>
+                </div>
+              )}
             </Field>
-            <Field label="Médico">
-              <select data-testid="ap-doctor" value={ap.doctor_id} onChange={(e) => {
-                const doc = medicos.find(m => m.id === e.target.value);
-                setAp({ ...ap, doctor_id: e.target.value, specialty: doc?.specialty || ap.specialty, unit: doc?.unit || ap.unit });
-              }} className="inp">
-                <option value="">— Selecionar —</option>
-                {medicos.map(m => <option key={m.id} value={m.id}>{m.name} · {m.specialty}</option>)}
-              </select>
-            </Field>
+            <div className="col-span-2 text-sm text-slate-500">
+              O sistema escolherá automaticamente o médico com menos consultas
+              naquele dia.
+            </div>
             <Field label="Data e hora">
-              <input data-testid="ap-datetime" type="datetime-local" value={ap.scheduled_at} onChange={(e) => setAp({ ...ap, scheduled_at: e.target.value })} className="inp" />
+              <input
+                data-testid="ap-datetime"
+                type="datetime-local"
+                value={ap.scheduled_at}
+                onChange={(e) => setAp({ ...ap, scheduled_at: e.target.value })}
+                className="inp"
+              />
             </Field>
             <Field label="Prioridade">
-              <select value={ap.priority} onChange={(e) => setAp({ ...ap, priority: e.target.value })} className="inp">
+              <select
+                value={ap.priority}
+                onChange={(e) => setAp({ ...ap, priority: e.target.value })}
+                className="inp"
+              >
                 <option value="normal">Normal</option>
                 <option value="preferencial">Preferencial</option>
                 <option value="urgente">Urgente</option>
               </select>
             </Field>
             <Field label="Modalidade">
-              <select data-testid="ap-modality" value={ap.modality} onChange={(e) => setAp({ ...ap, modality: e.target.value })} className="inp">
+              <select
+                data-testid="ap-modality"
+                value={ap.modality}
+                onChange={(e) => setAp({ ...ap, modality: e.target.value })}
+                className="inp"
+              >
                 <option value="presencial">Presencial</option>
                 <option value="online">Online</option>
               </select>
             </Field>
           </div>
-          {ap.modality === "online" && onlineAvailability && onlineAvailability.max_online_slots !== null && (
-            <div className={`mt-3 text-xs rounded-md px-3 py-2 ${onlineAvailability.blocked ? "bg-[#E76F51]/10 text-[#E76F51]" : "bg-[#457B9D]/10 text-[#457B9D]"}`}>
-              {onlineAvailability.blocked
-                ? `Limite de vagas online atingido para este dia (${onlineAvailability.used_online_slots}/${onlineAvailability.max_online_slots}). Escolha outra data ou agende presencial.`
-                : `Vagas online disponíveis neste dia: ${onlineAvailability.remaining_online_slots} de ${onlineAvailability.max_online_slots}.`}
-            </div>
-          )}
+          {ap.modality === "online" &&
+            onlineAvailability &&
+            onlineAvailability.max_online_slots !== null && (
+              <div
+                className={`mt-3 text-xs rounded-md px-3 py-2 ${onlineAvailability.blocked ? "bg-[#E76F51]/10 text-[#E76F51]" : "bg-[#457B9D]/10 text-[#457B9D]"}`}
+              >
+                {onlineAvailability.blocked
+                  ? `Limite de vagas online atingido para este dia (${onlineAvailability.used_online_slots}/${onlineAvailability.max_online_slots}). Escolha outra data ou agende presencial.`
+                  : `Vagas online disponíveis neste dia: ${onlineAvailability.remaining_online_slots} de ${onlineAvailability.max_online_slots}.`}
+              </div>
+            )}
           <div className="flex justify-end gap-2 mt-6">
-            <button onClick={() => setShowApptForm(false)} className="btn-secondary">Cancelar</button>
-            <button data-testid="ap-submit" onClick={createAppt} disabled={!ap.patient_id || !ap.doctor_id || !ap.scheduled_at || (ap.modality === "online" && onlineAvailability?.blocked)} className="btn-primary disabled:opacity-50">Confirmar</button>
+            <button
+              onClick={() => setShowApptForm(false)}
+              className="btn-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              data-testid="ap-submit"
+              onClick={createAppt}
+              disabled={
+                !ap.patient_id ||
+                !ap.scheduled_at ||
+                (ap.modality === "online" && onlineAvailability?.blocked)
+              }
+              className="btn-primary disabled:opacity-50"
+            >
+              Confirmar
+            </button>
           </div>
         </Modal>
       )}
@@ -249,19 +438,72 @@ export default function AtendenteDashboard() {
       {showPatientForm && (
         <Modal title="Novo Paciente" onClose={() => setShowPatientForm(false)}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Nome completo"><input data-testid="np-name" value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} className="inp" /></Field>
-            <Field label="CPF"><input data-testid="np-cpf" value={np.cpf} onChange={(e) => setNp({ ...np, cpf: e.target.value })} className="inp" /></Field>
-            <Field label="Nascimento"><input type="date" value={np.birth_date} onChange={(e) => setNp({ ...np, birth_date: e.target.value })} className="inp" /></Field>
-            <Field label="Telefone"><input value={np.phone} onChange={(e) => setNp({ ...np, phone: e.target.value })} className="inp" /></Field>
-            <div className="col-span-2"><Field label="Endereço"><input value={np.address} onChange={(e) => setNp({ ...np, address: e.target.value })} className="inp" /></Field></div>
+            <Field label="Nome completo">
+              <input
+                data-testid="np-name"
+                value={np.name}
+                onChange={(e) => setNp({ ...np, name: e.target.value })}
+                className="inp"
+              />
+            </Field>
+            <Field label="CPF">
+              <input
+                data-testid="np-cpf"
+                value={np.cpf}
+                onChange={(e) => setNp({ ...np, cpf: e.target.value })}
+                className="inp"
+              />
+            </Field>
+            <Field label="Nascimento">
+              <input
+                type="date"
+                value={np.birth_date}
+                onChange={(e) => setNp({ ...np, birth_date: e.target.value })}
+                className="inp"
+              />
+            </Field>
+            <Field label="Telefone">
+              <input
+                value={np.phone}
+                onChange={(e) => setNp({ ...np, phone: e.target.value })}
+                className="inp"
+              />
+            </Field>
+            <div className="col-span-2">
+              <Field label="Endereço">
+                <input
+                  value={np.address}
+                  onChange={(e) => setNp({ ...np, address: e.target.value })}
+                  className="inp"
+                />
+              </Field>
+            </div>
             <label className="col-span-2 flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={np.lgpd_accepted} onChange={(e) => setNp({ ...np, lgpd_accepted: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={np.lgpd_accepted}
+                onChange={(e) =>
+                  setNp({ ...np, lgpd_accepted: e.target.checked })
+                }
+              />
               Paciente aceitou os Termos de Uso (LGPD)
             </label>
           </div>
           <div className="flex justify-end gap-2 mt-6">
-            <button onClick={() => setShowPatientForm(false)} className="btn-secondary">Cancelar</button>
-            <button data-testid="np-submit" onClick={createPatient} disabled={!np.name || !np.cpf} className="btn-primary disabled:opacity-50">Cadastrar</button>
+            <button
+              onClick={() => setShowPatientForm(false)}
+              className="btn-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              data-testid="np-submit"
+              onClick={createPatient}
+              disabled={!np.name || !np.cpf}
+              className="btn-primary disabled:opacity-50"
+            >
+              Cadastrar
+            </button>
           </div>
         </Modal>
       )}
@@ -279,20 +521,40 @@ function Stat({ label, value, icon: Icon, accent = "#1D3557" }) {
   return (
     <div className="sc-card">
       <div className="overline">{label}</div>
-      <div className="font-display text-3xl font-extrabold mt-2" style={{ color: accent }}>{value}</div>
+      <div
+        className="font-display text-3xl font-extrabold mt-2"
+        style={{ color: accent }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
 function Field({ label, children }) {
-  return <div><label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">{label}</label>{children}</div>;
+  return (
+    <div>
+      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
 }
 
 function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-display font-extrabold text-xl text-[#1D3557] mb-4">{title}</h3>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-display font-extrabold text-xl text-[#1D3557] mb-4">
+          {title}
+        </h3>
         {children}
       </div>
     </div>

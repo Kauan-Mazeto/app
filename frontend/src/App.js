@@ -54,6 +54,7 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
 
+            {/* Rotas de Médico e Atendente */}
             <Route element={<Protected roles={["medico", "atendente"]}><AppLayout /></Protected>}>
               <Route path="/medico" element={<MedicoDashboard />} />
               <Route path="/medico/paciente/:id" element={<Prontuario />} />
@@ -61,6 +62,7 @@ function App() {
               <Route path="/atendente/refs" element={<BuscadorRefs />} />
             </Route>
 
+            {/* Rotas exclusivas do Atendente */}
             <Route element={<Protected roles={["atendente"]}><AppLayout /></Protected>}>
               <Route path="/atendente" element={<AtendenteDashboard />} />
               <Route path="/atendente/vagas" element={<VagasOciosas />} />
@@ -69,24 +71,27 @@ function App() {
               <Route path="/atendente/estoque/saida" element={<Dispense />} />
             </Route>
 
+            {/* Rotas exclusivas do Secretário */}
             <Route element={<Protected roles={["secretario"]}><AppLayout /></Protected>}>
-  <Route path="/secretario" element={<SecretarioDashboard />} />
-  <Route path="/secretario/auditoria" element={<Auditoria />} />
-  <Route path="/secretario/estoque" element={<StockDashboard />} />
-  <Route path="/secretario/ia" element={<PrevisaoIa />} />
-  <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
-</Route>
+              <Route path="/secretario" element={<SecretarioDashboard />} />
+              <Route path="/secretario/auditoria" element={<Auditoria />} />
+              <Route path="/secretario/estoque" element={<StockDashboard />} />
+              <Route path="/secretario/ia" element={<PrevisaoIa />} />
+              <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
+            </Route>
 
-{/* Configuração de vagas online x presencial: acessível tanto pelo
-    atendente quanto pelo secretário */}
-<Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
-  <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
-</Route>
+            {/* Configuração de vagas online x presencial: acessível por Atendente e Secretário */}
+            <Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
+              <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
+              <Route path="/secretario/config-vagas" element={<ConfiguracaoVagas />} />
+            </Route>
 
+            {/* Rotas exclusivas do Administrador */}
             <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>
               <Route path="/admin" element={<AdminDashboard />} />
             </Route>
 
+            {/* Rota Padrão */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
@@ -94,5 +99,6 @@ function App() {
     </div>
   );
 }
+
 
 export default App;

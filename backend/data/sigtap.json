@@ -1,0 +1,63 @@
+[
+  {
+    "code": "03.01.01.007-2",
+    "desc": "Consulta médica na atenção especializada"
+  },
+  { "code": "03.01.01.004-7", "desc": "Consulta médica na atenção básica" },
+  {
+    "code": "03.01.06.011-8",
+    "desc": "Atendimento de urgência em atenção especializada (UPA/Pronto-socorro)"
+  },
+  {
+    "code": "03.01.05.008-2",
+    "desc": "Visita domiciliar por profissional de nível superior"
+  },
+  {
+    "code": "03.01.10.001-2",
+    "desc": "Consulta de profissionais de nível superior na atenção primária (não médico)"
+  },
+
+  { "code": "02.02.12.002-3", "desc": "Hemograma completo" },
+  { "code": "02.02.02.038-0", "desc": "Dosagem de glicose" },
+  {
+    "code": "02.14.01.001-5",
+    "desc": "Coleta de material para exame laboratoriais (taxa de coleta)"
+  },
+  { "code": "02.02.05.001-8", "desc": "Dosagem de colesterol total" },
+  { "code": "02.02.05.002-6", "desc": "Dosagem de colesterol HDL" },
+  { "code": "02.02.05.003-4", "desc": "Dosagem de colesterol LDL" },
+  { "code": "02.02.05.061-1", "desc": "Dosagem de triglicerídeos" },
+  { "code": "02.02.03.010-3", "desc": "Dosagem de creatinina" },
+  { "code": "02.02.03.050-2", "desc": "Dosagem de ureia" },
+  { "code": "02.02.01.031-5", "desc": "Dosagem de TGO / AST" },
+  { "code": "02.02.01.032-3", "desc": "Dosagem de TGP / ALT" },
+  { "code": "02.02.06.025-0", "desc": "Dosagem de TSH" },
+  { "code": "02.02.08.008-0", "desc": "Exame de urina rotina (EAS / Tipo 1)" },
+  { "code": "02.02.08.007-2", "desc": "Exame parasitológico de fezes (EPF)" },
+
+  { "code": "02.11.02.003-6", "desc": "Eletrocardiograma (ECG)" },
+  { "code": "02.11.02.006-0", "desc": "Teste ergométrico" },
+  { "code": "02.04.03.017-0", "desc": "Radiografia de tórax (PA e Perfil)" },
+  { "code": "02.05.02.004-6", "desc": "Ultrassonografia de abdome total" },
+  { "code": "02.05.02.005-4", "desc": "Ultrassonografia de abdome superior" },
+  { "code": "02.05.02.018-6", "desc": "Ultrassonografia transvaginal" },
+  { "code": "02.05.01.003-2", "desc": "Ultrassonografia de mamas (bilateral)" },
+  { "code": "02.06.01.007-9", "desc": "Tomografia computadorizada de crânio" },
+  { "code": "02.07.01.007-2", "desc": "Ressonância magnética de crânio" },
+
+  { "code": "03.01.10.010-1", "desc": "Sessão de fisioterapia" },
+  {
+    "code": "02.03.01.008-6",
+    "desc": "Exame citopatológico cérvico-vaginal (Papanicolau)"
+  },
+  { "code": "02.09.01.002-9", "desc": "Endoscopia digestiva alta" },
+  { "code": "03.10.01.003-9", "desc": "Inalação / Nebulização" },
+  { "code": "03.10.01.004-7", "desc": "Injeção de medicamento" },
+
+  {
+    "code": "03.10.02.001-8",
+    "desc": "Internação clínica (tratamento de doenças)"
+  },
+  { "code": "04.11.01.003-4", "desc": "Parto normal" },
+  { "code": "04.11.01.004-2", "desc": "Parto cesariana" }
+]

@@ -1,0 +1,80 @@
+[
+  {
+    "code": "10101012",
+    "desc": "Consulta médica em consultório (horário normal ou eletiva)"
+  },
+  { "code": "10101020", "desc": "Consulta médica em domicílio" },
+  {
+    "code": "10101039",
+    "desc": "Consulta em pronto-socorro / atendimento de urgência"
+  },
+  {
+    "code": "10102019",
+    "desc": "Visita hospitalar (médico assistente acompanhando paciente internado)"
+  },
+  {
+    "code": "10104020",
+    "desc": "Atendimento médico ao recém-nascido em sala de parto"
+  },
+
+  { "code": "40301191", "desc": "Hemograma completo" },
+  { "code": "40302040", "desc": "Glicose dosagem" },
+  { "code": "40316342", "desc": "Urina tipo 1 (EAS)" },
+  { "code": "40302589", "desc": "Ureia dosagem" },
+  { "code": "40302422", "desc": "Creatinina dosagem" },
+  { "code": "40304360", "desc": "Colesterol total" },
+  { "code": "40304378", "desc": "Colesterol HDL dosagem" },
+  { "code": "40304280", "desc": "Colesterol LDL dosagem" },
+  { "code": "40304386", "desc": "Triglicerídeos dosagem" },
+  { "code": "40301639", "desc": "TGP / ALT dosagem" },
+  { "code": "40301604", "desc": "TGO / AST dosagem" },
+  { "code": "40316148", "desc": "Parasitológico de fezes (EPF)" },
+  { "code": "40302317", "desc": "TSH (Hormônio tireoestimulante) dosagem" },
+  { "code": "40302449", "desc": "T4 Livre dosagem" },
+  { "code": "40303127", "desc": "Beta HCG (Teste de gravidez quantitativo)" },
+
+  {
+    "code": "40805018",
+    "desc": "Radiografia (Raio-X) de tórax em 2 incidências (PA e Perfil)"
+  },
+  { "code": "40901203", "desc": "Ultrassonografia (USG) de abdome total" },
+  { "code": "40901181", "desc": "Ultrassonografia (USG) de abdome superior" },
+  {
+    "code": "40901238",
+    "desc": "Ultrassonografia (USG) de aparelho urinário (rins e bexiga)"
+  },
+  { "code": "40901300", "desc": "Ultrassonografia (USG) transvaginal" },
+  { "code": "40901122", "desc": "Ultrassonografia (USG) de mamas (bilateral)" },
+  { "code": "40901173", "desc": "Ultrassonografia (USG) de tireoide" },
+  { "code": "41001010", "desc": "Tomografia Computadorizada (TC) de crânio" },
+  { "code": "41101138", "desc": "Ressonância Magnética (RM) de crânio" },
+
+  {
+    "code": "40101010",
+    "desc": "Eletrocardiograma (ECG) convencional de 12 derivações"
+  },
+  {
+    "code": "40101045",
+    "desc": "Teste ergométrico computadorizado (teste de esteira)"
+  },
+  {
+    "code": "40101061",
+    "desc": "Ecocardiograma transtorácico bidimensional com Doppler"
+  },
+  {
+    "code": "40101037",
+    "desc": "Monitorização ambulatorial da pressão arterial (MAPA - 24 horas)"
+  },
+  { "code": "40101029", "desc": "Holter de 24 horas (3 canais)" },
+
+  {
+    "code": "20103093",
+    "desc": "Sessão de fisioterapia motora (por membro ou patologia)"
+  },
+  {
+    "code": "40601136",
+    "desc": "Exame citopatológico cérvico-vaginal (Papanicolau / Preventivo)"
+  },
+  { "code": "40201120", "desc": "Endoscopia digestiva alta (EDA) diagnóstica" },
+  { "code": "40201139", "desc": "Colonoscopia diagnóstica" }
+]

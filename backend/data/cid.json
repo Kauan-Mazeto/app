@@ -1,0 +1,88 @@
+[
+  {
+    "code": "A00-B99",
+    "desc": "Doenças Infecciosas e Parasitárias (ex.: A90 Dengue, A09 Gastroenterite, A15 Tuberculose)"
+  },
+  { "code": "C00-D48", "desc": "Neoplasias / Tumores" },
+  {
+    "code": "E00-E90",
+    "desc": "Doenças Endócrinas, Nutricionais e Metabólicas (ex.: E10-E14 Diabetes, E66 Obesidade)"
+  },
+  {
+    "code": "F00-F99",
+    "desc": "Transtornos Mentais e Comportamentais (ex.: F32 Depressão, F41 Ansiedade, F20 Esquizofrenia, F84 Transtornos do espectro autista na CID-10)"
+  },
+  {
+    "code": "G00-G99",
+    "desc": "Doenças do Sistema Nervoso (ex.: G43 Enxaqueca, G40 Epilepsia, G30 Alzheimer)"
+  },
+  {
+    "code": "I00-I99",
+    "desc": "Doenças do Sistema Circulatório (ex.: I10 Hipertensão, I21 Infarto agudo do miocárdio)"
+  },
+  {
+    "code": "J00-J99",
+    "desc": "Doenças do Sistema Respiratório (ex.: J45 Asma, J01 Sinusite aguda, J06 Infecções respiratórias agudas)"
+  },
+  {
+    "code": "K00-K93",
+    "desc": "Doenças do Sistema Digestivo (ex.: K29 Gastrite, K21 Refluxo, K35 Apendicite)"
+  },
+  {
+    "code": "M00-M99",
+    "desc": "Doenças do Sistema Osteomuscular (ex.: M54 Dor lombar, M41 Escoliose)"
+  },
+  {
+    "code": "Z00-Z99",
+    "desc": "Fatores que influenciam o estado de saúde (ex.: Z00 Check-up, Z76 Acompanhamento)"
+  },
+
+  { "code": "A90", "desc": "Dengue" },
+  {
+    "code": "A09",
+    "desc": "Gastroenterite e outras doenças intestinais infecciosas"
+  },
+  { "code": "A15", "desc": "Tuberculose respiratória" },
+
+  { "code": "E10", "desc": "Diabetes mellitus tipo 1" },
+  { "code": "E11", "desc": "Diabetes mellitus tipo 2" },
+  { "code": "E12", "desc": "Diabetes mellitus relacionado à desnutrição" },
+  {
+    "code": "E13",
+    "desc": "Diabetes mellitus devido a outras causas especificadas"
+  },
+  { "code": "E14", "desc": "Diabetes mellitus, sem especificação" },
+  { "code": "E66", "desc": "Obesidade" },
+
+  { "code": "F32", "desc": "Episódios depressivos" },
+  { "code": "F41", "desc": "Transtornos ansiosos" },
+  { "code": "F20", "desc": "Esquizofrenia" },
+  {
+    "code": "F84",
+    "desc": "Transtornos invasivos do desenvolvimento (inclui Autismo na CID-10)"
+  },
+
+  { "code": "G43", "desc": "Enxaqueca" },
+  { "code": "G40", "desc": "Epilepsia" },
+  { "code": "G30", "desc": "Doença de Alzheimer" },
+
+  { "code": "I10", "desc": "Hipertensão essencial (primária)" },
+  { "code": "I21", "desc": "Infarto agudo do miocárdio" },
+
+  { "code": "J45", "desc": "Asma" },
+  { "code": "J01", "desc": "Sinusite aguda" },
+  {
+    "code": "J06",
+    "desc": "Infecções agudas das vias respiratórias superiores, múltiplas ou não especificadas"
+  },
+
+  { "code": "K29", "desc": "Gastrite e duodenite" },
+  { "code": "K21", "desc": "Doença do refluxo gastroesofágico" },
+  { "code": "K35", "desc": "Apendicite aguda" },
+
+  { "code": "M54", "desc": "Dorsalgia (dor lombar)" },
+  { "code": "M41", "desc": "Escoliose" },
+
+  { "code": "Z00", "desc": "Exame de rotina e check-up" },
+  { "code": "Z76", "desc": "Acompanhamento e situação relacionada à saúde" }
+]
