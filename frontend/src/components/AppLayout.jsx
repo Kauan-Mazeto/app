@@ -37,13 +37,8 @@ const navByRole = {
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
     {
-      to: "/atendente/estoque/entrada",
-      label: "Estoque · Entrada",
-      icon: Pill,
-    },
-    {
-      to: "/atendente/estoque/saida",
-      label: "Estoque · Dispensação",
+      to: "/atendente/estoque",
+      label: "Estoque",
       icon: Pill,
     },
   ],
@@ -62,7 +57,6 @@ const navByRole = {
   admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
 
-
 const roleLabel = {
   medico: "Médico(a)",
   atendente: "Atendente",
@@ -75,13 +69,14 @@ export default function AppLayout() {
   const nav = useNavigate();
   const links = navByRole[user.role] || [];
 
-  const homePath = user?.role === "secretario"
-    ? "/secretario"
-    : user?.role === "atendente"
-      ? "/atendente"
-      : user?.role === "medico"
-        ? "/medico"
-        : "/admin";
+  const homePath =
+    user?.role === "secretario"
+      ? "/secretario"
+      : user?.role === "atendente"
+        ? "/atendente"
+        : user?.role === "medico"
+          ? "/medico"
+          : "/admin";
 
   const handleLogout = async () => {
     await logout();
@@ -93,7 +88,11 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#1D3557] text-white flex flex-col h-screen sticky top-0">
         <div className="px-6 py-6 border-b border-white/10">
-          <button type="button" onClick={() => nav(homePath)} className="flex items-center rounded-lg transition hover:opacity-90">
+          <button
+            type="button"
+            onClick={() => nav(homePath)}
+            className="flex items-center rounded-lg transition hover:opacity-90"
+          >
             <img
               src="/logoProjeto.png"
               alt="Saúde na palma da mão"
