@@ -15,6 +15,7 @@ import Dispense from "@/pages/atendente/Dispense";
 import SecretarioDashboard from "@/pages/secretario/SecretarioDashboard";
 import Auditoria from "@/pages/secretario/Auditoria";
 import StockDashboard from "@/pages/secretario/StockDashboard";
+import ConfiguracaoVagas from "@/pages/atendente/ConfiguracaoVagas";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import "./App.css";
 
@@ -69,6 +70,13 @@ function App() {
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
               <Route path="/secretario/estoque" element={<StockDashboard />} />
+            </Route>
+
+            {/* Configuração de vagas online x presencial: acessível tanto pelo
+                atendente (onde vive o arquivo/fluxo de agendamento) quanto
+                pelo secretário (que também precisa enxergar/ajustar a config). */}
+            <Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
+              <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
             </Route>
 
             <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>

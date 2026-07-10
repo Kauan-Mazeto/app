@@ -31,14 +31,15 @@ const toAppt = (a) => ({
   specialty: a.specialty,
   priority: a.priority,
   unit: a.unit,
+  modality: a.type,
   status: a.status,
   scheduled_at: a.scheduledAt.toISOString(),
   patient: a.patient
     ? {
-        name: a.patient.name,
-        cpf: a.patient.cpf,
-        birth_date: a.patient.birthDate,
-      }
+      name: a.patient.name,
+      cpf: a.patient.cpf,
+      birth_date: a.patient.birthDate,
+    }
     : {},
 });
 const parseJson = (value, fallback = []) => {
@@ -63,6 +64,37 @@ const toPrescription = (r) => ({
   adherence_logs: parseJson(r.adherenceLogs, []),
   created_at: r.createdAt?.toISOString(),
 });
+
+// Retorna início/fim (00:00–24:00) do dia local da data informada.
+const dayRange = (date) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+};
+
+// Verifica se uma nova consulta ONLINE para `unit`/`date` estouraria o
+// limite de vagas online configurado para aquele dia da semana.
+// Sem configuração cadastrada para a unidade/dia = sem limite (não bloqueia).
+async function isOnlineSlotBlocked(unit, date, excludeApptId = null) {
+  const dayOfWeek = date.getDay();
+  const config = await prisma.onlineSlotConfig.findUnique({
+    where: { unit_dayOfWeek: { unit, dayOfWeek } },
+  });
+  if (!config) return { blocked: false, used: 0, max: null };
+
+  const { start, end } = dayRange(date);
+  const used = await prisma.appointment.count({
+    where: {
+      unit,
+      type: "online",
+      scheduledAt: { gte: start, lt: end },
+      ...(excludeApptId ? { id: { not: excludeApptId } } : {}),
+    },
+  });
+  return { blocked: used >= config.maxOnlineSlots, used, max: config.maxOnlineSlots };
+}
 
 api.post("/auth/login", async (req, res) => {
   const user = await prisma.user.findUnique({
@@ -204,14 +236,28 @@ api.post(
   requireAuth,
   requireRoles("atendente", "admin"),
   async (req, res) => {
+    const unit = req.body.unit || "UBS Central";
+    const modality = req.body.modality === "online" ? "online" : "presencial";
+    const scheduledAt = new Date(req.body.scheduled_at);
+
+    if (modality === "online") {
+      const block = await isOnlineSlotBlocked(unit, scheduledAt);
+      if (block.blocked) {
+        return res.status(400).json({
+          detail: `Limite de vagas online atingido para ${unit} neste dia (${block.used}/${block.max}). Escolha outro dia ou agende presencial.`,
+        });
+      }
+    }
+
     const a = await prisma.appointment.create({
       data: {
         patientId: req.body.patient_id,
         doctorId: req.body.doctor_id,
         specialty: req.body.specialty,
-        scheduledAt: new Date(req.body.scheduled_at),
+        scheduledAt,
         priority: req.body.priority || "normal",
-        unit: req.body.unit || "UBS Central",
+        unit,
+        type: modality,
       },
     });
     res.json(toAppt(a));
@@ -262,6 +308,124 @@ api.get("/queue/today", requireAuth, async (req, res) => {
       order[a.priority] - order[b.priority] || a.scheduledAt - b.scheduledAt,
   );
   res.json(appts.map(toAppt));
+});
+
+/* ==========================================
+   UNIDADES DE SAÚDE
+   ========================================== */
+// Lista todas as unidades cadastradas (tabela HealthUnit) + quaisquer
+// unidades "avulsas" já usadas em agendamentos/usuários mas ainda não
+// formalizadas na tabela (compatibilidade com dados legados).
+api.get("/health-units", requireAuth, async (req, res) => {
+  const [units, apptUnits, userUnits] = await Promise.all([
+    prisma.healthUnit.findMany({ orderBy: { name: "asc" } }),
+    prisma.appointment.findMany({ distinct: ["unit"], select: { unit: true } }),
+    prisma.user.findMany({ distinct: ["unit"], select: { unit: true } }),
+  ]);
+  const known = new Set(units.map((u) => u.name));
+  const legacy = [...new Set([...apptUnits, ...userUnits].map((u) => u.unit).filter(Boolean))]
+    .filter((name) => !known.has(name));
+  const all = [
+    ...units.map((u) => ({ id: u.id, name: u.name })),
+    ...legacy.map((name) => ({ id: null, name })),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+  res.json(all);
+});
+
+// Cadastra uma nova unidade de saúde (persistida no banco).
+api.post(
+  "/health-units",
+  requireAuth,
+  requireRoles("atendente", "secretario", "admin"),
+  async (req, res) => {
+    const name = (req.body.name || "").trim();
+    if (!name) return res.status(400).json({ detail: "Nome da unidade é obrigatório" });
+    const existing = await prisma.healthUnit.findFirst({ where: { name } });
+    if (existing) return res.json({ id: existing.id, name: existing.name });
+    const unit = await prisma.healthUnit.create({ data: { name } });
+    await audit(req.user, "health_unit.create", unit.id, { name });
+    res.json({ id: unit.id, name: unit.name });
+  },
+);
+
+/* ==========================================
+   CONFIGURAÇÃO DE VAGAS ONLINE X PRESENCIAL
+   ========================================== */
+const DAYS_OF_WEEK = [0, 1, 2, 3, 4, 5, 6];
+
+// Lista a configuração dos 7 dias da semana para uma unidade.
+// Dias sem registro salvo vêm com valores padrão (não persistidos).
+api.get(
+  "/scheduling-config",
+  requireAuth,
+  requireRoles("secretario", "admin", "atendente"),
+  async (req, res) => {
+    const unit = req.query.unit;
+    if (!unit) return res.status(400).json({ detail: "Parâmetro 'unit' é obrigatório" });
+    const rows = await prisma.onlineSlotConfig.findMany({ where: { unit } });
+    const byDay = Object.fromEntries(rows.map((r) => [r.dayOfWeek, r]));
+    const days = DAYS_OF_WEEK.map((dayOfWeek) => {
+      const r = byDay[dayOfWeek];
+      return {
+        day_of_week: dayOfWeek,
+        online_percentage: r?.onlinePercentage ?? 50,
+        max_online_slots: r?.maxOnlineSlots ?? 0,
+      };
+    });
+    res.json({ unit, days });
+  },
+);
+
+// Salva (upsert) a configuração dos dias da semana de uma unidade.
+api.put(
+  "/scheduling-config",
+  requireAuth,
+  requireRoles("atendente", "secretario", "admin"),
+  async (req, res) => {
+    const { unit, days } = req.body;
+    if (!unit || !Array.isArray(days))
+      return res.status(400).json({ detail: "Payload inválido: 'unit' e 'days' são obrigatórios" });
+
+    for (const d of days) {
+      const dayOfWeek = Number(d.day_of_week);
+      const onlinePercentage = Math.max(0, Math.min(100, Number(d.online_percentage) || 0));
+      const maxOnlineSlots = Math.max(0, Number(d.max_online_slots) || 0);
+      if (!DAYS_OF_WEEK.includes(dayOfWeek)) continue;
+      await prisma.onlineSlotConfig.upsert({
+        where: { unit_dayOfWeek: { unit, dayOfWeek } },
+        update: { onlinePercentage, maxOnlineSlots },
+        create: { unit, dayOfWeek, onlinePercentage, maxOnlineSlots },
+      });
+    }
+    await audit(req.user, "scheduling_config.update", unit, { unit, days });
+    res.json({ ok: true });
+  },
+);
+
+// Consulta a disponibilidade de vagas online para uma unidade/data específica.
+api.get("/scheduling-config/availability", requireAuth, async (req, res) => {
+  const { unit, date } = req.query;
+  if (!unit || !date)
+    return res.status(400).json({ detail: "Parâmetros 'unit' e 'date' são obrigatórios" });
+  const d = new Date(date + "T00:00:00");
+  const config = await prisma.onlineSlotConfig.findUnique({
+    where: { unit_dayOfWeek: { unit, dayOfWeek: d.getDay() } },
+  });
+  const { start, end } = dayRange(d);
+  const used = await prisma.appointment.count({
+    where: { unit, type: "online", scheduledAt: { gte: start, lt: end } },
+  });
+  const max = config?.maxOnlineSlots ?? null;
+  res.json({
+    unit,
+    date,
+    day_of_week: d.getDay(),
+    online_percentage: config?.onlinePercentage ?? null,
+    max_online_slots: max,
+    used_online_slots: used,
+    remaining_online_slots: max === null ? null : Math.max(0, max - used),
+    blocked: max !== null && used >= max,
+  });
 });
 
 api.get("/prescriptions", requireAuth, async (req, res) => {
@@ -483,26 +647,26 @@ api.get(
       orderBy: { timestamp: "desc" },
       take: 8,
     });
-    
+
     const totalAppts = all.length;
     const faltas = all.filter((a) => a.status === "faltou").length;
     const compareceu = all.filter((a) => a.status === "compareceu").length;
-    
+
     const bySpec = {}, byUnit = {};
     for (const a of all) {
       bySpec[a.specialty] ??= { total: 0, faltas: 0 };
       bySpec[a.specialty].total++;
       if (a.status === "faltou") bySpec[a.specialty].faltas++;
-      
+
       byUnit[a.unit] ??= { total: 0, faltas: 0 };
       byUnit[a.unit].total++;
       if (a.status === "faltou") byUnit[a.unit].faltas++;
     }
-    
+
     const prescs = await prisma.prescription.findMany({
       where: { active: true },
     });
-    
+
     const medMap = {};
     for (const p of prescs) {
       medMap[p.medication] = (medMap[p.medication] || 0) + 1;
@@ -536,7 +700,7 @@ api.get(
       ((scores.filter((s) => s >= 9).length -
         scores.filter((s) => s <= 6).length) /
         scores.length) *
-        100,
+      100,
     );
 
     res.json({
@@ -728,10 +892,10 @@ const search = (arr, q) =>
   !q
     ? arr
     : arr.filter(
-        (c) =>
-          c.code.toLowerCase().includes(q.toLowerCase()) ||
-          c.desc.toLowerCase().includes(q.toLowerCase()),
-      );
+      (c) =>
+        c.code.toLowerCase().includes(q.toLowerCase()) ||
+        c.desc.toLowerCase().includes(q.toLowerCase()),
+    );
 api.get("/refs/cid", (req, res) => res.json(search(CID, req.query.q)));
 api.get("/refs/tuss", (req, res) => res.json(search(TUSS, req.query.q)));
 api.get("/refs/sigtap", (req, res) => res.json(search(SIGTAP, req.query.q)));

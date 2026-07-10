@@ -6,14 +6,15 @@ import { useNavigate } from "react-router-dom";
 
 export default function AtendenteDashboard() {
   const navigate = useNavigate();
-  const [sortOrder, setSortOrder] = useState("asc"); 
+  const [sortOrder, setSortOrder] = useState("asc");
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [q, setQ] = useState("");
   const [showApptForm, setShowApptForm] = useState(false);
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [medicos, setMedicos] = useState([]);
-  const [ap, setAp] = useState({ patient_id: "", doctor_id: "", specialty: "Clínica Geral", scheduled_at: "", priority: "normal", unit: "UBS Central" });
+  const [ap, setAp] = useState({ patient_id: "", doctor_id: "", specialty: "Clínica Geral", scheduled_at: "", priority: "normal", unit: "UBS Central", modality: "presencial" });
+  const [onlineAvailability, setOnlineAvailability] = useState(null);
   const [np, setNp] = useState({ name: "", cpf: "", birth_date: "2000-01-01", phone: "", address: "", lgpd_accepted: true });
   const [filterName, setFilterName] = useState("");
   const [filterStartTime, setFilterStartTime] = useState("");
@@ -32,13 +33,22 @@ export default function AtendenteDashboard() {
   useEffect(() => { load(); }, []);
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [q]);
 
+  // Consulta a disponibilidade de vagas online sempre que unidade, data ou modalidade mudam.
+  useEffect(() => {
+    if (ap.modality !== "online" || !ap.scheduled_at || !ap.unit) { setOnlineAvailability(null); return; }
+    const date = ap.scheduled_at.slice(0, 10);
+    api.get(`/scheduling-config/availability?unit=${encodeURIComponent(ap.unit)}&date=${date}`)
+      .then((r) => setOnlineAvailability(r.data))
+      .catch(() => setOnlineAvailability(null));
+  }, [ap.modality, ap.scheduled_at, ap.unit]);
+
   const createAppt = async () => {
     try {
       const iso = new Date(ap.scheduled_at).toISOString();
       await api.post("/appointments", { ...ap, scheduled_at: iso });
       toast.success("Consulta agendada");
       setShowApptForm(false); load();
-    } catch (e) { toast.error("Erro ao agendar"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Erro ao agendar"); }
   };
 
   const createPatient = async () => {
@@ -101,28 +111,28 @@ export default function AtendenteDashboard() {
             {/* Alinha o título e o botão de ordenação lado a lado no topo */}
             <div className="flex justify-between items-center w-full">
               <h2 className="font-display font-bold text-lg text-[#1D3557] m-0">Agenda de Hoje</h2>
-              
-              <button 
+
+              <button
                 onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
                 className="text-xs bg-slate-100 hover:bg-slate-200 text-[#1D3557] px-2.5 py-1 rounded-md font-semibold transition"
               >
                 Horário {sortOrder === "asc" ? "ASC ▲" : "DESC ▼"}
               </button>
-            </div> 
+            </div>
 
             {/* Filtros fixos na tela (aparecem a todo momento) */}
             <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-              <input 
-                type="text" 
-                placeholder="Filtrar paciente..." 
+              <input
+                type="text"
+                placeholder="Filtrar paciente..."
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
                 className="p-2 border border-slate-200 rounded-md col-span-2"
               />
               <div className="flex items-center gap-1">
                 <span className="text-slate-400">De:</span>
-                <input 
-                  type="time" 
+                <input
+                  type="time"
                   value={filterStartTime}
                   onChange={(e) => setFilterStartTime(e.target.value)}
                   className="p-1.5 border border-slate-200 rounded-md w-full"
@@ -130,8 +140,8 @@ export default function AtendenteDashboard() {
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-slate-400">Até:</span>
-                <input 
-                  type="time" 
+                <input
+                  type="time"
                   value={filterEndTime}
                   onChange={(e) => setFilterEndTime(e.target.value)}
                   className="p-1.5 border border-slate-200 rounded-md w-full"
@@ -146,7 +156,7 @@ export default function AtendenteDashboard() {
               // 1. Aplica os filtros de nome e horário nos dados da API
               const filteredAppts = appts.filter(a => {
                 const matchesName = !filterName || a.patient?.name?.toLowerCase().includes(filterName.toLowerCase());
-                
+
                 const apptTime = a.scheduled_at?.slice(11, 16); // Recorta "HH:MM" da string ISO
                 const matchesStart = !filterStartTime || apptTime >= filterStartTime;
                 const matchesEnd = !filterEndTime || apptTime <= filterEndTime;
@@ -167,8 +177,8 @@ export default function AtendenteDashboard() {
 
               // 3. Renderiza os cards ordenados
               return sortedAppts.map(a => (
-                <div 
-                  key={a.id} 
+                <div
+                  key={a.id}
                   onClick={() => navigate(`/medico/prontuario/${a.patient_id}?appt=${a.id}`)}
                   className="flex justify-between items-center border border-slate-100 rounded-md p-3 text-sm hover:border-[#457B9D] hover:bg-slate-50 cursor-pointer transition"
                 >
@@ -181,7 +191,7 @@ export default function AtendenteDashboard() {
                     <div className="text-xs capitalize text-slate-500">{a.status}</div>
                   </div>
                 </div>
-              )); 
+              ));
             })()}
           </div>
         </div>
@@ -191,7 +201,7 @@ export default function AtendenteDashboard() {
         <Modal title="Agendar Consulta Presencial" onClose={() => setShowApptForm(false)}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Paciente">
-              <select data-testid="ap-patient" value={ap.patient_id} onChange={(e) => setAp({...ap, patient_id: e.target.value})} className="inp">
+              <select data-testid="ap-patient" value={ap.patient_id} onChange={(e) => setAp({ ...ap, patient_id: e.target.value })} className="inp">
                 <option value="">— Selecionar —</option>
                 {patients.filter(p => !p.blocked_online).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -199,26 +209,39 @@ export default function AtendenteDashboard() {
             <Field label="Médico">
               <select data-testid="ap-doctor" value={ap.doctor_id} onChange={(e) => {
                 const doc = medicos.find(m => m.id === e.target.value);
-                setAp({...ap, doctor_id: e.target.value, specialty: doc?.specialty || ap.specialty, unit: doc?.unit || ap.unit});
+                setAp({ ...ap, doctor_id: e.target.value, specialty: doc?.specialty || ap.specialty, unit: doc?.unit || ap.unit });
               }} className="inp">
                 <option value="">— Selecionar —</option>
                 {medicos.map(m => <option key={m.id} value={m.id}>{m.name} · {m.specialty}</option>)}
               </select>
             </Field>
             <Field label="Data e hora">
-              <input data-testid="ap-datetime" type="datetime-local" value={ap.scheduled_at} onChange={(e) => setAp({...ap, scheduled_at: e.target.value})} className="inp" />
+              <input data-testid="ap-datetime" type="datetime-local" value={ap.scheduled_at} onChange={(e) => setAp({ ...ap, scheduled_at: e.target.value })} className="inp" />
             </Field>
             <Field label="Prioridade">
-              <select value={ap.priority} onChange={(e) => setAp({...ap, priority: e.target.value})} className="inp">
+              <select value={ap.priority} onChange={(e) => setAp({ ...ap, priority: e.target.value })} className="inp">
                 <option value="normal">Normal</option>
                 <option value="preferencial">Preferencial</option>
                 <option value="urgente">Urgente</option>
               </select>
             </Field>
+            <Field label="Modalidade">
+              <select data-testid="ap-modality" value={ap.modality} onChange={(e) => setAp({ ...ap, modality: e.target.value })} className="inp">
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+              </select>
+            </Field>
           </div>
+          {ap.modality === "online" && onlineAvailability && onlineAvailability.max_online_slots !== null && (
+            <div className={`mt-3 text-xs rounded-md px-3 py-2 ${onlineAvailability.blocked ? "bg-[#E76F51]/10 text-[#E76F51]" : "bg-[#457B9D]/10 text-[#457B9D]"}`}>
+              {onlineAvailability.blocked
+                ? `Limite de vagas online atingido para este dia (${onlineAvailability.used_online_slots}/${onlineAvailability.max_online_slots}). Escolha outra data ou agende presencial.`
+                : `Vagas online disponíveis neste dia: ${onlineAvailability.remaining_online_slots} de ${onlineAvailability.max_online_slots}.`}
+            </div>
+          )}
           <div className="flex justify-end gap-2 mt-6">
             <button onClick={() => setShowApptForm(false)} className="btn-secondary">Cancelar</button>
-            <button data-testid="ap-submit" onClick={createAppt} disabled={!ap.patient_id || !ap.doctor_id || !ap.scheduled_at} className="btn-primary disabled:opacity-50">Confirmar</button>
+            <button data-testid="ap-submit" onClick={createAppt} disabled={!ap.patient_id || !ap.doctor_id || !ap.scheduled_at || (ap.modality === "online" && onlineAvailability?.blocked)} className="btn-primary disabled:opacity-50">Confirmar</button>
           </div>
         </Modal>
       )}
@@ -226,13 +249,13 @@ export default function AtendenteDashboard() {
       {showPatientForm && (
         <Modal title="Novo Paciente" onClose={() => setShowPatientForm(false)}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Nome completo"><input data-testid="np-name" value={np.name} onChange={(e) => setNp({...np, name: e.target.value})} className="inp" /></Field>
-            <Field label="CPF"><input data-testid="np-cpf" value={np.cpf} onChange={(e) => setNp({...np, cpf: e.target.value})} className="inp" /></Field>
-            <Field label="Nascimento"><input type="date" value={np.birth_date} onChange={(e) => setNp({...np, birth_date: e.target.value})} className="inp" /></Field>
-            <Field label="Telefone"><input value={np.phone} onChange={(e) => setNp({...np, phone: e.target.value})} className="inp" /></Field>
-            <div className="col-span-2"><Field label="Endereço"><input value={np.address} onChange={(e) => setNp({...np, address: e.target.value})} className="inp" /></Field></div>
+            <Field label="Nome completo"><input data-testid="np-name" value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} className="inp" /></Field>
+            <Field label="CPF"><input data-testid="np-cpf" value={np.cpf} onChange={(e) => setNp({ ...np, cpf: e.target.value })} className="inp" /></Field>
+            <Field label="Nascimento"><input type="date" value={np.birth_date} onChange={(e) => setNp({ ...np, birth_date: e.target.value })} className="inp" /></Field>
+            <Field label="Telefone"><input value={np.phone} onChange={(e) => setNp({ ...np, phone: e.target.value })} className="inp" /></Field>
+            <div className="col-span-2"><Field label="Endereço"><input value={np.address} onChange={(e) => setNp({ ...np, address: e.target.value })} className="inp" /></Field></div>
             <label className="col-span-2 flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={np.lgpd_accepted} onChange={(e) => setNp({...np, lgpd_accepted: e.target.checked})} />
+              <input type="checkbox" checked={np.lgpd_accepted} onChange={(e) => setNp({ ...np, lgpd_accepted: e.target.checked })} />
               Paciente aceitou os Termos de Uso (LGPD)
             </label>
           </div>
@@ -256,7 +279,7 @@ function Stat({ label, value, icon: Icon, accent = "#1D3557" }) {
   return (
     <div className="sc-card">
       <div className="overline">{label}</div>
-      <div className="font-display text-3xl font-extrabold mt-2" style={{color: accent}}>{value}</div>
+      <div className="font-display text-3xl font-extrabold mt-2" style={{ color: accent }}>{value}</div>
     </div>
   );
 }

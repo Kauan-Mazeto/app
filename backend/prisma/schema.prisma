@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -57,9 +57,22 @@ model Appointment {
   status        String   @default("aguardando")
   justification String?
   checkedIn     Boolean  @default(false)
+  type          String   @default("presencial")
   createdAt     DateTime @default(now())
   patient       Patient  @relation(fields: [patientId], references: [id])
   doctor        User     @relation(fields: [doctorId], references: [id])
+}
+
+model OnlineSlotConfig {
+  id               String   @id @default(uuid())
+  unit             String
+  dayOfWeek        Int // 0 = domingo ... 6 = sábado
+  onlinePercentage Int      @default(50)
+  maxOnlineSlots   Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([unit, dayOfWeek])
 }
 
 model Prescription {
@@ -164,4 +177,17 @@ model AuditLog {
   details   String   @default("{}")
   timestamp DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model AppointmentConfig {
+  id             String   @id @default(uuid())
+  specialty      String
+  dayOfWeek      Int?
+  specificDate   String?
+  maxOnlineSlots Int      @default(10)
+  maxTotalSlots  Int      @default(20)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String
 }

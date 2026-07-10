@@ -58,10 +58,12 @@ export default function Landing() {
               Conhecer recursos
             </a>
           </div>
-          <div className="mt-8 text-xs text-slate-500 flex items-center gap-2">
+
+          {/*<div className="mt-8 text-xs text-slate-500 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#1E4620]" />
             Conformidade LGPD · Integração Gov.br (mock) · CID · TUSS · SIGTAP
           </div>
+          */}
         </div>
 
         <div className="relative">
