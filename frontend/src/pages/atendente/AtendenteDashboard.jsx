@@ -158,20 +158,28 @@ export default function AtendenteDashboard() {
     }
   };
 
-  const confirmLockDoctor = async (reason) => {
+  const confirmLockDoctor = async (reason, date) => {
     if (!reason.trim()) {
       toast.error("Informe o motivo do bloqueio");
       return;
     }
+    if (!date) {
+      toast.error("Selecione a data do bloqueio");
+      return;
+    }
     setLockingInProgress(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
       await api.post("/secretario/agenda/lock", {
         doctor_id: selectedDoctorForLock.id,
-        date: today,
+        date,
         reason: reason.trim(),
       });
-      toast.success("Agenda bloqueada e pacientes notificados");
+      const today = new Date().toISOString().slice(0, 10);
+      toast.success(
+        date === today
+          ? "Agenda bloqueada agora e pacientes notificados"
+          : `Bloqueio agendado para ${date.split("-").reverse().join("/")}`
+      );
       setShowLockModal(false);
       load();
     } catch (e) {
@@ -394,18 +402,24 @@ export default function AtendenteDashboard() {
           ) : (
             <div className="space-y-2">
               {doctors.map((doctor) => {
+                const todayStr = new Date().toISOString().slice(0, 10);
                 const hasActiveLock = doctor.doctorLocks?.some(
                   (lock) =>
                     lock.active &&
-                    new Date(lock.date).toISOString().slice(0, 10) ===
-                      new Date().toISOString().slice(0, 10),
+                    new Date(lock.date).toISOString().slice(0, 10) === todayStr,
                 );
                 const activeLock = doctor.doctorLocks?.find(
                   (lock) =>
                     lock.active &&
-                    new Date(lock.date).toISOString().slice(0, 10) ===
-                      new Date().toISOString().slice(0, 10),
+                    new Date(lock.date).toISOString().slice(0, 10) === todayStr,
                 );
+                const upcomingLocks = (doctor.doctorLocks || [])
+                  .filter(
+                    (lock) =>
+                      lock.active &&
+                      new Date(lock.date).toISOString().slice(0, 10) > todayStr,
+                  )
+                  .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 return (
                   <div
@@ -425,9 +439,14 @@ export default function AtendenteDashboard() {
                       </div>
                       {hasActiveLock && activeLock && (
                         <div className="text-xs text-[#E76F51] mt-1 font-semibold">
-                          🔒 Bloqueado: {activeLock.reason}
+                          🔒 Bloqueado hoje: {activeLock.reason}
                         </div>
                       )}
+                      {upcomingLocks.map((lock) => (
+                        <div key={lock.id} className="text-xs text-[#457B9D] mt-1 font-semibold">
+                          📅 Bloqueio agendado para {new Date(lock.date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}: {lock.reason}
+                        </div>
+                      ))}
                     </div>
                     {!hasActiveLock ? (
                       <button
@@ -716,10 +735,13 @@ function Modal({ title, children, onClose }) {
 }
 
 function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [reason, setReason] = useState("");
+  const [when, setWhen] = useState("hoje"); // "hoje" | "agendar"
+  const [date, setDate] = useState(todayStr);
 
   const handleConfirm = () => {
-    onConfirm(reason);
+    onConfirm(reason, when === "hoje" ? todayStr : date);
     setReason("");
   };
 
@@ -748,6 +770,45 @@ function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
 
         <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+            Quando bloquear?
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setWhen("hoje")}
+              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${
+                when === "hoje"
+                  ? "bg-[#E76F51] text-white border-[#E76F51]"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-[#E76F51]"
+              }`}
+            >
+              Bloquear agora (hoje)
+            </button>
+            <button
+              type="button"
+              onClick={() => setWhen("agendar")}
+              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${
+                when === "agendar"
+                  ? "bg-[#457B9D] text-white border-[#457B9D]"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-[#457B9D]"
+              }`}
+            >
+              Agendar para outro dia
+            </button>
+          </div>
+          {when === "agendar" && (
+            <input
+              type="date"
+              value={date}
+              min={todayStr}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-2 w-full p-2 border border-slate-200 rounded text-sm"
+            />
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
             Motivo do Imprevisto
           </label>
           <textarea
@@ -762,7 +823,11 @@ function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
         <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700 mb-4">
           <strong>O que vai acontecer:</strong>
           <ul className="mt-2 space-y-1 ml-3">
-            <li>✓ Todos as consultas futuras serão canceladas</li>
+            <li>
+              ✓ {when === "hoje"
+                ? "Consultas restantes de hoje serão canceladas"
+                : "Todas as consultas do dia escolhido serão canceladas"}
+            </li>
             <li>✓ Os pacientes serão notificados (simulada)</li>
             <li>✓ A ação será registrada na auditoria</li>
           </ul>
@@ -778,11 +843,11 @@ function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!reason.trim() || isLoading}
+            disabled={!reason.trim() || (when === "agendar" && !date) || isLoading}
             className="px-4 py-2 text-sm font-semibold text-white bg-[#E76F51] hover:bg-[#E76F51]/90 rounded disabled:opacity-50 transition flex items-center gap-2"
           >
             <Lock className="w-4 h-4" />
-            {isLoading ? "Bloqueando..." : "Bloquear Agenda"}
+            {isLoading ? "Processando..." : when === "hoje" ? "Bloquear Agora" : "Agendar Bloqueio"}
           </button>
         </div>
       </div>

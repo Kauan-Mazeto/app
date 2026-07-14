@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
-import { Clock, AlertTriangle, User, Activity } from "lucide-react";
+import { Clock, AlertTriangle, User, Activity, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 const priorityStyle = {
@@ -14,10 +14,12 @@ const statusStyle = {
   aguardando: "text-[#457B9D]",
   compareceu: "text-[#1E4620]",
   faltou: "text-[#E76F51]",
+  bloqueio_medico: "text-[#E76F51]",
 };
 
 export default function MedicoDashboard() {
   const [queue, setQueue] = useState([]);
+  const [lock, setLock] = useState(null);
   const [loading, setLoading] = useState(true);
   const nav = useNavigate();
 
@@ -25,7 +27,8 @@ export default function MedicoDashboard() {
     setLoading(true);
     try {
       const { data } = await api.get("/queue/today");
-      setQueue(data);
+      setQueue(data.appointments || []);
+      setLock(data.lock || null);
     } catch { toast.error("Erro ao carregar fila"); }
     setLoading(false);
   };
@@ -54,6 +57,19 @@ export default function MedicoDashboard() {
         <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">Fila de Atendimento</h1>
         <p className="text-slate-500 mt-1">Ordenada por prioridade e horário. Clique no paciente para abrir o prontuário.</p>
       </div>
+
+      {lock && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3" data-testid="doctor-lock-banner">
+          <Lock className="w-5 h-5 text-[#E76F51] mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <div className="font-bold text-[#E76F51]">Sua agenda de hoje está bloqueada</div>
+            <div className="text-slate-700 mt-0.5"><strong>Motivo:</strong> {lock.reason}</div>
+            <div className="text-slate-500 text-xs mt-1">
+              Bloqueada em {new Date(lock.locked_at).toLocaleString("pt-BR")}. As consultas restantes de hoje foram canceladas e os pacientes notificados.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4 mb-8">
         <StatCard label="Consultas hoje" value={stats.total} icon={Activity} />
@@ -105,7 +121,9 @@ export default function MedicoDashboard() {
                   <td className="px-6 py-4 font-mono-nums text-slate-700">
                     {a.scheduled_at?.slice(11, 16)}
                   </td>
-                  <td className={`px-6 py-4 font-semibold capitalize ${statusStyle[a.status]}`}>{a.status}</td>
+                  <td className={`px-6 py-4 font-semibold capitalize ${statusStyle[a.status]}`}>
+                    {a.status === "bloqueio_medico" ? "Cancelada (bloqueio)" : a.status}
+                  </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button
                       data-testid={`start-consult-${a.id}`}

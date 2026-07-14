@@ -161,7 +161,10 @@ api.get("/users", requireAuth, async (req, res) => {
   if (!["admin", "secretario", "atendente"].includes(r))
     return res.status(403).json({ detail: "Acesso negado" });
   const where = ["admin", "secretario"].includes(r) ? {} : { role: "medico" };
-  const users = await prisma.user.findMany({ where });
+  const users = await prisma.user.findMany({
+    where,
+    include: { doctorLocks: { where: { active: true } } },
+  });
   res.json(users.map(({ passwordHash, ...u }) => u));
 });
 api.post("/users", requireAuth, requireRoles("admin"), async (req, res) => {
@@ -354,7 +357,24 @@ api.get("/queue/today", requireAuth, async (req, res) => {
     (a, b) =>
       order[a.priority] - order[b.priority] || a.scheduledAt - b.scheduledAt,
   );
-  res.json(appts.map(toAppt));
+
+  // Se for médico, informa também se a própria agenda de hoje está bloqueada
+  // (imprevisto registrado pelo atendente), para exibir um aviso na tela.
+  let lock = null;
+  if (req.user.role === "medico") {
+    const activeLock = await prisma.doctorScheduleLock.findFirst({
+      where: { doctorId: req.user.id, date: start, active: true },
+    });
+    if (activeLock) {
+      lock = {
+        id: activeLock.id,
+        reason: activeLock.reason,
+        locked_at: activeLock.lockedAt.toISOString(),
+      };
+    }
+  }
+
+  res.json({ appointments: appts.map(toAppt), lock });
 });
 
 /* ==========================================
@@ -362,11 +382,11 @@ api.get("/queue/today", requireAuth, async (req, res) => {
    ========================================== */
 
 // POST /api/secretario/agenda/lock
-// Bloqueia a agenda de um médico para um dia específico
+// Bloqueia a agenda de um médico para um dia específico (hoje ou uma data futura)
 api.post(
   "/secretario/agenda/lock",
   requireAuth,
-  requireRoles("secretario", "admin"),
+  requireRoles("atendente", "secretario", "admin"),
   async (req, res) => {
     const user = req.user;
     const { doctor_id, date, reason } = req.body;
@@ -394,6 +414,14 @@ api.post(
     // Converter date (YYYY-MM-DD) para DateTime às 00:00
     const lockDate = new Date(date);
     lockDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (lockDate < today) {
+      return res.status(400).json({
+        detail: "Não é possível bloquear uma data no passado",
+      });
+    }
 
     // Verificar se já existe bloqueio ativo para este médico neste dia
     const existingLock = await prisma.doctorScheduleLock.findFirst({
@@ -423,15 +451,20 @@ api.post(
         },
       });
 
-      // 2. Buscar consultas do médico neste dia, a partir de agora, aguardando
+      // 2. Buscar consultas do médico no dia bloqueado.
+      // Se o bloqueio é para HOJE, só afeta consultas a partir de agora em diante
+      // (não mexe em quem já foi atendido). Se é para um dia FUTURO, afeta o dia
+      // inteiro — e não pode "vazar" para os dias entre hoje e a data escolhida.
       const now = new Date();
+      const dayEnd = new Date(lockDate.getTime() + 24 * 60 * 60 * 1000);
+      const effectiveStart = lockDate.getTime() > now.getTime() ? lockDate : now;
       const affectedAppointments = await tx.appointment.findMany({
         where: {
           doctorId: doctor_id,
           status: "aguardando",
           scheduledAt: {
-            gte: now, // Apenas consultas futuras (filtro principal)
-            lt: new Date(lockDate.getTime() + 24 * 60 * 60 * 1000), // Até meia-noite do dia seguinte
+            gte: effectiveStart,
+            lt: dayEnd,
           },
         },
         include: { patient: true },
@@ -471,7 +504,7 @@ api.post(
         patient_name: a.patient.name,
         scheduled_at: a.scheduledAt.toISOString(),
       })),
-      message: `Agenda bloqueada. ${result.affectedAppointments.length} consulta(s) cancelada(s) e paciente(s) notificado(s).`,
+      message: `Agenda bloqueada para ${date}. ${result.affectedAppointments.length} consulta(s) cancelada(s) e paciente(s) notificado(s).`,
     });
   },
 );
@@ -481,7 +514,7 @@ api.post(
 api.post(
   "/secretario/agenda/:lockId/unlock",
   requireAuth,
-  requireRoles("secretario", "admin"),
+  requireRoles("atendente", "secretario", "admin"),
   async (req, res) => {
     const user = req.user;
     const { lockId } = req.params;
@@ -531,7 +564,7 @@ api.post(
 api.get(
   "/secretario/agenda/status",
   requireAuth,
-  requireRoles("secretario", "admin"),
+  requireRoles("atendente", "secretario", "admin"),
   async (req, res) => {
     const { date } = req.query;
 
