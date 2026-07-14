@@ -19,7 +19,6 @@ import PrevisaoIa from "@/pages/secretario/PrevisaoIa";
 import Feedbacks from "@/pages/secretario/Feedbacks";
 import "./App.css";
 
-
 const rolePath = {
   medico: "/medico",
   atendente: "/atendente",
@@ -29,9 +28,11 @@ const rolePath = {
 
 function Protected({ roles, children }) {
   const { user } = useAuth();
-  if (user === null) return <div className="p-10 text-slate-500">Carregando...</div>;
+  if (user === null)
+    return <div className="p-10 text-slate-500">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to={rolePath[user.role] || "/"} replace />;
+  if (roles && !roles.includes(user.role))
+    return <Navigate to={rolePath[user.role] || "/"} replace />;
   return children;
 }
 
@@ -53,7 +54,13 @@ function App() {
             <Route path="/login" element={<Login />} />
 
             {/* Rotas de Médico e Atendente */}
-            <Route element={<Protected roles={["medico", "atendente"]}><AppLayout /></Protected>}>
+            <Route
+              element={
+                <Protected roles={["medico", "atendente"]}>
+                  <AppLayout />
+                </Protected>
+              }
+            >
               <Route path="/medico" element={<MedicoDashboard />} />
               <Route path="/medico/paciente/:id" element={<Prontuario />} />
               <Route path="/atendente/fila" element={<MedicoDashboard />} />
@@ -61,7 +68,13 @@ function App() {
             </Route>
 
             {/* Rotas exclusivas do Atendente */}
-            <Route element={<Protected roles={["atendente"]}><AppLayout /></Protected>}>
+            <Route
+              element={
+                <Protected roles={["atendente"]}>
+                  <AppLayout />
+                </Protected>
+              }
+            >
               <Route path="/atendente" element={<AtendenteDashboard />} />
               <Route path="/atendente/vagas" element={<VagasOciosas />} />
               <Route path="/atendente/exames" element={<EntregaExames />} />
@@ -70,22 +83,49 @@ function App() {
             </Route>
 
             {/* Rotas exclusivas do Secretário */}
-            <Route element={<Protected roles={["secretario"]}><AppLayout /></Protected>}>
+            <Route
+              element={
+                <Protected roles={["secretario"]}>
+                  <AppLayout />
+                </Protected>
+              }
+            >
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
-              <Route path="/secretario/estoque" element={<StockManagement mode="secretario" />} />
+              <Route
+                path="/secretario/estoque"
+                element={<StockManagement mode="secretario" />}
+              />
               <Route path="/secretario/ia" element={<PrevisaoIa />} />
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 
             {/* Configuração de vagas online x presencial: acessível por Atendente e Secretário */}
-            <Route element={<Protected roles={["atendente", "secretario"]}><AppLayout /></Protected>}>
-              <Route path="/atendente/config-vagas" element={<ConfiguracaoVagas />} />
-              <Route path="/secretario/config-vagas" element={<ConfiguracaoVagas />} />
+            <Route
+              element={
+                <Protected roles={["atendente", "secretario"]}>
+                  <AppLayout />
+                </Protected>
+              }
+            >
+              <Route
+                path="/atendente/config-vagas"
+                element={<ConfiguracaoVagas />}
+              />
+              <Route
+                path="/secretario/config-vagas"
+                element={<ConfiguracaoVagas />}
+              />
             </Route>
 
             {/* Rotas exclusivas do Administrador */}
-            <Route element={<Protected roles={["admin"]}><AppLayout /></Protected>}>
+            <Route
+              element={
+                <Protected roles={["admin"]}>
+                  <AppLayout />
+                </Protected>
+              }
+            >
               <Route path="/admin" element={<AdminDashboard />} />
             </Route>
 
@@ -97,6 +137,5 @@ function App() {
     </div>
   );
 }
-
 
 export default App;

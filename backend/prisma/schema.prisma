@@ -26,6 +26,9 @@ model User {
   examsDeliver  Exam[]         @relation("ExamDeliveredBy")
   auditLogs     AuditLog[]
   stockTransactions StockTransaction[]
+  doctorLocks   DoctorScheduleLock[] @relation("DoctorLocks")
+  lockedBy      DoctorScheduleLock[] @relation("LockedBy")
+  unlockedBy    DoctorScheduleLock[] @relation("UnlockedBy")
 }
 
 model Patient {
@@ -59,9 +62,11 @@ model Appointment {
   justification String?
   checkedIn     Boolean  @default(false)
   type          String   @default("presencial")
+  lockId        String?
   createdAt     DateTime @default(now())
   patient       Patient  @relation(fields: [patientId], references: [id])
   doctor        User     @relation(fields: [doctorId], references: [id])
+  lock          DoctorScheduleLock? @relation(fields: [lockId], references: [id])
 }
 
 model OnlineSlotConfig {
@@ -194,4 +199,23 @@ model AppointmentConfig {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   createdById    String
+}
+
+model DoctorScheduleLock {
+  id             String    @id @default(uuid())
+  doctorId       String
+  date           DateTime
+  reason         String
+  lockedAt       DateTime  @default(now())
+  lockedById     String
+  unlockedAt     DateTime?
+  unlockedById   String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  doctor         User      @relation("DoctorLocks", fields: [doctorId], references: [id])
+  lockedBy       User      @relation("LockedBy", fields: [lockedById], references: [id])
+  unlockedBy     User?     @relation("UnlockedBy", fields: [unlockedById], references: [id])
+  appointments   Appointment[]
+
+  @@index([doctorId, date])
 }

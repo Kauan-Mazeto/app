@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Calendar, Users, Search, Plus } from "lucide-react";
+import { Calendar, Users, Search, Plus, Lock, LockOpen, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AtendenteDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sortOrder, setSortOrder] = useState("asc");
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [q, setQ] = useState("");
   const [patientQuery, setPatientQuery] = useState("");
   const [showApptForm, setShowApptForm] = useState(false);
   const [showPatientForm, setShowPatientForm] = useState(false);
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [selectedDoctorForLock, setSelectedDoctorForLock] = useState(null);
+  const [lockingInProgress, setLockingInProgress] = useState(false);
   const [ap, setAp] = useState({
     patient_id: "",
     specialty: "Clínica Geral",
@@ -40,6 +46,13 @@ export default function AtendenteDashboard() {
     const today = new Date().toISOString().slice(0, 10);
     const a = await api.get(`/appointments?date=${today}`);
     setAppts(a.data);
+    
+    // Carregar médicos da unidade do atendente
+    if (user?.unit) {
+      const docsRes = await api.get("/users?role=medico");
+      const doctorsInUnit = docsRes.data.filter((d) => d.unit === user.unit);
+      setDoctors(doctorsInUnit);
+    }
   };
 
   useEffect(() => {
@@ -109,6 +122,50 @@ export default function AtendenteDashboard() {
       });
     } catch (e) {
       toast.error("Erro ao cadastrar");
+    }
+  };
+
+  const handleLockDoctor = (doctor) => {
+    setSelectedDoctorForLock(doctor);
+    setShowLockModal(true);
+  };
+
+  const handleUnlockDoctor = async (lockId) => {
+    if (!confirm("Desbloquear agenda? Consultas já canceladas não retornarão automaticamente.")) {
+      return;
+    }
+    setLockingInProgress(true);
+    try {
+      await api.post(`/secretario/agenda/${lockId}/unlock`, {});
+      toast.success("Agenda desbloqueada");
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao desbloquear");
+    } finally {
+      setLockingInProgress(false);
+    }
+  };
+
+  const confirmLockDoctor = async (reason) => {
+    if (!reason.trim()) {
+      toast.error("Informe o motivo do bloqueio");
+      return;
+    }
+    setLockingInProgress(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await api.post("/secretario/agenda/lock", {
+        doctor_id: selectedDoctorForLock.id,
+        date: today,
+        reason: reason.trim(),
+      });
+      toast.success("Agenda bloqueada e pacientes notificados");
+      setShowLockModal(false);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao bloquear");
+    } finally {
+      setLockingInProgress(false);
     }
   };
 
@@ -312,6 +369,81 @@ export default function AtendenteDashboard() {
             })()}
           </div>
         </div>
+
+        {/* Bloquear/Desbloquear Agenda do Médico */}
+        <div className="sc-card">
+          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
+            ⚠️ Gerenciar Bloqueio de Agenda
+          </h2>
+          {doctors.length === 0 ? (
+            <div className="text-sm text-slate-400 py-4">
+              Nenhum médico cadastrado em sua unidade.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {doctors.map((doctor) => {
+                const hasActiveLock = doctor.doctorLocks?.some(
+                  (lock) =>
+                    lock.active &&
+                    new Date(lock.date).toISOString().slice(0, 10) ===
+                      new Date().toISOString().slice(0, 10),
+                );
+                const activeLock = doctor.doctorLocks?.find(
+                  (lock) =>
+                    lock.active &&
+                    new Date(lock.date).toISOString().slice(0, 10) ===
+                      new Date().toISOString().slice(0, 10),
+                );
+
+                return (
+                  <div
+                    key={doctor.id}
+                    className={`flex justify-between items-center p-3 rounded-md border ${
+                      hasActiveLock
+                        ? "border-[#E76F51] bg-[#E76F51]/5"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <div>
+                      <div className="font-semibold text-[#1D3557]">
+                        {doctor.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {doctor.specialty}
+                      </div>
+                      {hasActiveLock && activeLock && (
+                        <div className="text-xs text-[#E76F51] mt-1 font-semibold">
+                          🔒 Bloqueado: {activeLock.reason}
+                        </div>
+                      )}
+                    </div>
+                    {!hasActiveLock ? (
+                      <button
+                        onClick={() => handleLockDoctor(doctor)}
+                        disabled={lockingInProgress}
+                        className="px-3 py-1 bg-[#E76F51] text-white rounded text-xs font-semibold hover:bg-[#E76F51]/90 disabled:opacity-50 transition"
+                      >
+                        <Lock className="w-3 h-3 inline mr-1" /> Bloquear
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleUnlockDoctor(activeLock.id)}
+                        disabled={lockingInProgress}
+                        className="px-3 py-1 bg-[#457B9D] text-white rounded text-xs font-semibold hover:bg-[#457B9D]/90 disabled:opacity-50 transition"
+                      >
+                        <LockOpen className="w-3 h-3 inline mr-1" /> Desbloquear
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
+            <strong>💡 Dica:</strong> Use este gerenciador quando o médico avisar de um imprevisto.
+            A agenda será bloqueada imediatamente e os pacientes serão notificados.
+          </div>
+        </div>
       </div>
 
       {showApptForm && (
@@ -508,6 +640,15 @@ export default function AtendenteDashboard() {
         </Modal>
       )}
 
+      {showLockModal && selectedDoctorForLock && (
+        <LockDoctorModal
+          doctor={selectedDoctorForLock}
+          onClose={() => setShowLockModal(false)}
+          onConfirm={confirmLockDoctor}
+          isLoading={lockingInProgress}
+        />
+      )}
+
       <style>{`
         .inp { width: 100%; padding: .5rem .75rem; border: 1px solid #E2E8F0; border-radius: .375rem; font-size: .875rem; }
         .btn-primary { background: #1D3557; color: #fff; padding: .5rem 1rem; border-radius: .375rem; font-weight: 600; font-size: .875rem; }
@@ -556,6 +697,79 @@ function Modal({ title, children, onClose }) {
           {title}
         </h3>
         {children}
+      </div>
+    </div>
+  );
+}
+
+function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
+  const [reason, setReason] = useState("");
+
+  const handleConfirm = () => {
+    onConfirm(reason);
+    setReason("");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle className="w-5 h-5 text-[#E76F51]" />
+          <h3 className="font-display font-extrabold text-lg text-[#1D3557]">
+            Bloquear Agenda
+          </h3>
+        </div>
+
+        <div className="mb-4 p-3 bg-slate-50 rounded border border-slate-200">
+          <div className="text-sm font-semibold text-[#1D3557]">{doctor.name}</div>
+          <div className="text-xs text-slate-600">{doctor.specialty}</div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+            Motivo do Imprevisto
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ex: Cirurgia de emergência, Consulta urgente, etc."
+            className="w-full p-2 border border-slate-200 rounded text-sm resize-none focus:outline-none focus:ring-1 focus:ring-[#457B9D]"
+            rows={3}
+          />
+        </div>
+
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700 mb-4">
+          <strong>O que vai acontecer:</strong>
+          <ul className="mt-2 space-y-1 ml-3">
+            <li>✓ Todos as consultas futuras serão canceladas</li>
+            <li>✓ Os pacientes serão notificados (simulada)</li>
+            <li>✓ A ação será registrada na auditoria</li>
+          </ul>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!reason.trim() || isLoading}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#E76F51] hover:bg-[#E76F51]/90 rounded disabled:opacity-50 transition flex items-center gap-2"
+          >
+            <Lock className="w-4 h-4" />
+            {isLoading ? "Bloqueando..." : "Bloquear Agenda"}
+          </button>
+        </div>
       </div>
     </div>
   );

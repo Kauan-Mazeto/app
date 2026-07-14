@@ -8,15 +8,26 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState("");
 
   const fetchMe = async () => {
+    const token = localStorage.getItem("sc_token");
+    if (!token) {
+      setUser(false);
+      return;
+    }
+
     try {
       const { data } = await api.get("/auth/me");
       setUser(data);
-    } catch {
+    } catch (e) {
+      if (e.response?.status === 401) {
+        localStorage.removeItem("sc_token");
+      }
       setUser(false);
     }
   };
 
-  useEffect(() => { fetchMe(); }, []);
+  useEffect(() => {
+    fetchMe();
+  }, []);
 
   const login = async (email, password) => {
     setError("");
@@ -33,7 +44,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    try { await api.post("/auth/logout"); } catch {}
+    try {
+      await api.post("/auth/logout");
+    } catch {}
     localStorage.removeItem("sc_token");
     setUser(false);
   };

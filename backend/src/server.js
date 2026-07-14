@@ -358,6 +358,257 @@ api.get("/queue/today", requireAuth, async (req, res) => {
 });
 
 /* ==========================================
+   BLOQUEIO DE AGENDA (IMPREVISTO DE MÉDICO)
+   ========================================== */
+
+// POST /api/secretario/agenda/lock
+// Bloqueia a agenda de um médico para um dia específico
+api.post(
+  "/secretario/agenda/lock",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const user = req.user;
+    const { doctor_id, date, reason } = req.body;
+
+    // Validações
+    if (!doctor_id || !date || !reason) {
+      return res.status(400).json({
+        detail: "Campos obrigatórios faltando: doctor_id, date, reason",
+      });
+    }
+
+    const doctor = await prisma.user.findUnique({ where: { id: doctor_id } });
+    if (!doctor || doctor.role !== "medico") {
+      return res.status(400).json({
+        detail: "Médico não encontrado ou inválido",
+      });
+    }
+
+    if (!reason.trim()) {
+      return res.status(400).json({
+        detail: "Motivo não pode ser vazio",
+      });
+    }
+
+    // Converter date (YYYY-MM-DD) para DateTime às 00:00
+    const lockDate = new Date(date);
+    lockDate.setHours(0, 0, 0, 0);
+
+    // Verificar se já existe bloqueio ativo para este médico neste dia
+    const existingLock = await prisma.doctorScheduleLock.findFirst({
+      where: {
+        doctorId: doctor_id,
+        date: lockDate,
+        active: true,
+      },
+    });
+
+    if (existingLock) {
+      return res.status(400).json({
+        detail: "Já existe um bloqueio ativo para este médico neste dia",
+      });
+    }
+
+    // Executar transação: criar bloqueio e cancelar consultas
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Criar registro DoctorScheduleLock
+      const lock = await tx.doctorScheduleLock.create({
+        data: {
+          doctorId: doctor_id,
+          date: lockDate,
+          reason: reason.trim(),
+          lockedById: user.id,
+          active: true,
+        },
+      });
+
+      // 2. Buscar consultas do médico neste dia, a partir de agora, aguardando
+      const now = new Date();
+      const affectedAppointments = await tx.appointment.findMany({
+        where: {
+          doctorId: doctor_id,
+          status: "aguardando",
+          scheduledAt: {
+            gte: now, // Apenas consultas futuras (filtro principal)
+            lt: new Date(lockDate.getTime() + 24 * 60 * 60 * 1000), // Até meia-noite do dia seguinte
+          },
+        },
+        include: { patient: true },
+      });
+
+      // 3. Atualizar consultas afetadas
+      if (affectedAppointments.length > 0) {
+        await tx.appointment.updateMany({
+          where: {
+            id: { in: affectedAppointments.map((a) => a.id) },
+          },
+          data: {
+            status: "bloqueio_medico",
+            justification: reason.trim(),
+            lockId: lock.id,
+          },
+        });
+      }
+
+      return { lock, affectedAppointments };
+    });
+
+    // Auditoria
+    await audit(user, "agenda.lock", result.lock.id, {
+      doctorId: doctor_id,
+      date: date,
+      reason: reason.trim(),
+      affectedAppointments: result.affectedAppointments.length,
+    });
+
+    res.status(201).json({
+      ok: true,
+      lock: result.lock,
+      affected_appointments: result.affectedAppointments.map((a) => ({
+        id: a.id,
+        patient_id: a.patientId,
+        patient_name: a.patient.name,
+        scheduled_at: a.scheduledAt.toISOString(),
+      })),
+      message: `Agenda bloqueada. ${result.affectedAppointments.length} consulta(s) cancelada(s) e paciente(s) notificado(s).`,
+    });
+  },
+);
+
+// POST /api/secretario/agenda/:lockId/unlock
+// Desbloqueia a agenda de um médico
+api.post(
+  "/secretario/agenda/:lockId/unlock",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const user = req.user;
+    const { lockId } = req.params;
+
+    const lock = await prisma.doctorScheduleLock.findUnique({
+      where: { id: lockId },
+    });
+
+    if (!lock) {
+      return res.status(404).json({
+        detail: "Bloqueio não encontrado",
+      });
+    }
+
+    if (!lock.active) {
+      return res.status(400).json({
+        detail: "Este bloqueio já está inativo",
+      });
+    }
+
+    // Atualizar bloqueio: marcar como inativo
+    const updatedLock = await prisma.doctorScheduleLock.update({
+      where: { id: lockId },
+      data: {
+        active: false,
+        unlockedAt: new Date(),
+        unlockedById: user.id,
+      },
+    });
+
+    // Auditoria
+    await audit(user, "agenda.unlock", lockId, {
+      doctorId: lock.doctorId,
+      date: lock.date.toISOString().split("T")[0],
+    });
+
+    res.json({
+      ok: true,
+      lock: updatedLock,
+      note: "Agenda desbloqueada. Consultas já canceladas não serão restauradas automaticamente — reagende-as manualmente conforme necessário.",
+    });
+  },
+);
+
+// GET /api/secretario/agenda/status
+// Retorna status de bloqueios de agenda para um dia específico
+api.get(
+  "/secretario/agenda/status",
+  requireAuth,
+  requireRoles("secretario", "admin"),
+  async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({
+        detail: "Parâmetro 'date' obrigatório (formato YYYY-MM-DD)",
+      });
+    }
+
+    // Converter para DateTime
+    const queryDate = new Date(date);
+    queryDate.setHours(0, 0, 0, 0);
+
+    // Buscar todos os médicos
+    const doctors = await prisma.user.findMany({
+      where: { role: "medico", active: true },
+      select: { id: true, name: true, specialty: true, unit: true },
+    });
+
+    // Para cada médico, buscar: bloqueios ativos, total de consultas, canceladas por bloqueio
+    const result = await Promise.all(
+      doctors.map(async (doctor) => {
+        const activeLock = await prisma.doctorScheduleLock.findFirst({
+          where: {
+            doctorId: doctor.id,
+            date: queryDate,
+            active: true,
+          },
+        });
+
+        const dayStart = new Date(queryDate);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+
+        const allAppointments = await prisma.appointment.count({
+          where: {
+            doctorId: doctor.id,
+            scheduledAt: { gte: dayStart, lt: dayEnd },
+          },
+        });
+
+        const cancelledByLock = await prisma.appointment.count({
+          where: {
+            doctorId: doctor.id,
+            scheduledAt: { gte: dayStart, lt: dayEnd },
+            status: "bloqueio_medico",
+          },
+        });
+
+        return {
+          doctor_id: doctor.id,
+          doctor_name: doctor.name,
+          specialty: doctor.specialty,
+          unit: doctor.unit,
+          has_active_lock: !!activeLock,
+          lock: activeLock
+            ? {
+                id: activeLock.id,
+                reason: activeLock.reason,
+                locked_at: activeLock.lockedAt.toISOString(),
+              }
+            : null,
+          appointments_total: allAppointments,
+          appointments_cancelled_by_lock: cancelledByLock,
+          appointments_normal: allAppointments - cancelledByLock,
+        };
+      }),
+    );
+
+    res.json({
+      date: date,
+      doctors: result,
+    });
+  },
+);
+
+/* ==========================================
    UNIDADES DE SAÚDE
    ========================================== */
 // Lista todas as unidades cadastradas (tabela HealthUnit) + quaisquer
@@ -838,12 +1089,9 @@ api.post(
       user.healthUnitId;
 
     if (!medicineId || qty <= 0) {
-      return res
-        .status(400)
-        .json({
-          detail:
-            "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
-        });
+      return res.status(400).json({
+        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
+      });
     }
 
     const selectedUnit = await prisma.healthUnit.findFirst({
@@ -932,12 +1180,9 @@ api.post(
       user.healthUnitId;
 
     if (!medicineId || qty <= 0) {
-      return res
-        .status(400)
-        .json({
-          detail:
-            "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
-        });
+      return res.status(400).json({
+        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
+      });
     }
 
     const selectedUnit = await prisma.healthUnit.findFirst({
