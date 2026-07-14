@@ -13,6 +13,14 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+function toLocalDateKey(d) {
+  const date = new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function AtendenteDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -33,9 +41,7 @@ export default function AtendenteDashboard() {
     scheduled_at: "",
     priority: "normal",
     unit: "UBS Central",
-    modality: "presencial",
   });
-  const [onlineAvailability, setOnlineAvailability] = useState(null);
   const [np, setNp] = useState({
     name: "",
     cpf: "",
@@ -87,25 +93,16 @@ export default function AtendenteDashboard() {
     setShowApptForm(true);
   };
 
-  // Consulta a disponibilidade de vagas online sempre que unidade, data ou modalidade mudam.
-  useEffect(() => {
-    if (ap.modality !== "online" || !ap.scheduled_at || !ap.unit) {
-      setOnlineAvailability(null);
-      return;
-    }
-    const date = ap.scheduled_at.slice(0, 10);
-    api
-      .get(
-        `/scheduling-config/availability?unit=${encodeURIComponent(ap.unit)}&date=${date}`,
-      )
-      .then((r) => setOnlineAvailability(r.data))
-      .catch(() => setOnlineAvailability(null));
-  }, [ap.modality, ap.scheduled_at, ap.unit]);
+  // Consultas do atendente são sempre presenciais — sem verificação de vagas online.
 
   const createAppt = async () => {
     try {
       const iso = new Date(ap.scheduled_at).toISOString();
-      await api.post("/appointments", { ...ap, scheduled_at: iso });
+      await api.post("/appointments", {
+        ...ap,
+        scheduled_at: iso,
+        modality: "presencial",
+      });
       toast.success("Consulta agendada");
       setShowApptForm(false);
       load();
@@ -364,7 +361,7 @@ export default function AtendenteDashboard() {
                 <div
                   key={a.id}
                   onClick={() =>
-                    navigate(`/medico/prontuario/${a.patient_id}?appt=${a.id}`)
+                    navigate(`/medico/paciente/${a.patient_id}`)
                   }
                   className="flex justify-between items-center border border-slate-100 rounded-md p-3 text-sm hover:border-[#457B9D] hover:bg-slate-50 cursor-pointer transition"
                 >
@@ -402,22 +399,17 @@ export default function AtendenteDashboard() {
           ) : (
             <div className="space-y-2">
               {doctors.map((doctor) => {
-                const todayStr = new Date().toISOString().slice(0, 10);
-                const hasActiveLock = doctor.doctorLocks?.some(
+                const todayStr = toLocalDateKey(new Date());
+                const activeLocksToday = (doctor.doctorLocks || []).filter(
                   (lock) =>
-                    lock.active &&
-                    new Date(lock.date).toISOString().slice(0, 10) === todayStr,
+                    lock.active && toLocalDateKey(lock.date) === todayStr,
                 );
-                const activeLock = doctor.doctorLocks?.find(
-                  (lock) =>
-                    lock.active &&
-                    new Date(lock.date).toISOString().slice(0, 10) === todayStr,
-                );
+                const hasActiveLock = activeLocksToday.length > 0;
+                const activeLock = activeLocksToday[0];
                 const upcomingLocks = (doctor.doctorLocks || [])
                   .filter(
                     (lock) =>
-                      lock.active &&
-                      new Date(lock.date).toISOString().slice(0, 10) > todayStr,
+                      lock.active && toLocalDateKey(lock.date) > todayStr,
                   )
                   .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -443,8 +435,22 @@ export default function AtendenteDashboard() {
                         </div>
                       )}
                       {upcomingLocks.map((lock) => (
-                        <div key={lock.id} className="text-xs text-[#457B9D] mt-1 font-semibold">
-                          📅 Bloqueio agendado para {new Date(lock.date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}: {lock.reason}
+                        <div
+                          key={lock.id}
+                          className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
+                        >
+                          <span>
+                            📅 Bloqueio agendado para{" "}
+                            {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
+                            {lock.reason}
+                          </span>
+                          <button
+                            onClick={() => handleUnlockDoctor(lock.id)}
+                            disabled={lockingInProgress}
+                            className="text-[#457B9D] underline hover:no-underline disabled:opacity-50"
+                          >
+                            Cancelar bloqueio
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -553,29 +559,7 @@ export default function AtendenteDashboard() {
                 <option value="urgente">Urgente</option>
               </select>
             </Field>
-            <Field label="Modalidade">
-              <select
-                data-testid="ap-modality"
-                value={ap.modality}
-                onChange={(e) => setAp({ ...ap, modality: e.target.value })}
-                className="inp"
-              >
-                <option value="presencial">Presencial</option>
-                <option value="online">Online</option>
-              </select>
-            </Field>
           </div>
-          {ap.modality === "online" &&
-            onlineAvailability &&
-            onlineAvailability.max_online_slots !== null && (
-              <div
-                className={`mt-3 text-xs rounded-md px-3 py-2 ${onlineAvailability.blocked ? "bg-[#E76F51]/10 text-[#E76F51]" : "bg-[#457B9D]/10 text-[#457B9D]"}`}
-              >
-                {onlineAvailability.blocked
-                  ? `Limite de vagas online atingido para este dia (${onlineAvailability.used_online_slots}/${onlineAvailability.max_online_slots}). Escolha outra data ou agende presencial.`
-                  : `Vagas online disponíveis neste dia: ${onlineAvailability.remaining_online_slots} de ${onlineAvailability.max_online_slots}.`}
-              </div>
-            )}
           <div className="flex justify-end gap-2 mt-6">
             <button
               onClick={() => setShowApptForm(false)}
@@ -586,11 +570,7 @@ export default function AtendenteDashboard() {
             <button
               data-testid="ap-submit"
               onClick={createAppt}
-              disabled={
-                !ap.patient_id ||
-                !ap.scheduled_at ||
-                (ap.modality === "online" && onlineAvailability?.blocked)
-              }
+              disabled={!ap.patient_id || !ap.scheduled_at}
               className="btn-primary disabled:opacity-50"
             >
               Confirmar

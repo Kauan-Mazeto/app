@@ -86,9 +86,14 @@ export default function Prontuario() {
   const startConsult = async () => {
     if (!apptId) return;
     try {
+      const { data: appt } = await api.get(`/appointments/${apptId}`);
+      if (appt.status !== "aguardando") return;
       await api.patch(`/appointments/${apptId}`, { status: "compareceu" });
       toast.success("Presença registrada");
-    } catch {}
+    } catch (e) {
+      const msg = e?.response?.data?.detail;
+      if (msg) toast.error(msg);
+    }
   };
 
   useEffect(() => {

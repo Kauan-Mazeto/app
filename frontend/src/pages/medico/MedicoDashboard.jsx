@@ -125,20 +125,33 @@ export default function MedicoDashboard() {
                     {a.status === "bloqueio_medico" ? "Cancelada (bloqueio)" : a.status}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      data-testid={`start-consult-${a.id}`}
-                      onClick={() => nav(`/medico/paciente/${a.patient_id}?appt=${a.id}`)}
-                      className="text-xs px-3 py-1.5 rounded-md bg-[#1D3557] text-white font-semibold hover:bg-[#152742]"
-                    >
-                      Atender
-                    </button>
-                    <button
-                      data-testid={`mark-missing-${a.id}`}
-                      onClick={() => markStatus(a.id, "faltou")}
-                      className="text-xs px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-50"
-                    >
-                      Faltou
-                    </button>
+                    {a.status === "aguardando" && (
+                      <>
+                        <button
+                          data-testid={`start-consult-${a.id}`}
+                          onClick={() => nav(`/medico/paciente/${a.patient_id}?appt=${a.id}`)}
+                          className="text-xs px-3 py-1.5 rounded-md bg-[#1D3557] text-white font-semibold hover:bg-[#152742]"
+                        >
+                          Atender
+                        </button>
+                        <button
+                          data-testid={`mark-missing-${a.id}`}
+                          onClick={() => markStatus(a.id, "faltou")}
+                          className="text-xs px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-50"
+                        >
+                          Faltou
+                        </button>
+                      </>
+                    )}
+                    {a.status === "compareceu" && (
+                      <button
+                        data-testid={`edit-consult-${a.id}`}
+                        onClick={() => nav(`/medico/paciente/${a.patient_id}`)}
+                        className="text-xs px-3 py-1.5 rounded-md border border-[#457B9D] text-[#457B9D] font-semibold hover:bg-[#457B9D]/5"
+                      >
+                        Editar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

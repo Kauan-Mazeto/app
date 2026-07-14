@@ -76,7 +76,27 @@ const dayRange = (date) => {
   return { start, end };
 };
 
+// Converte "YYYY-MM-DD" em meia-noite local (evita deslocamento UTC).
+const parseLocalDate = (dateStr) => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+};
+
+// Verifica se o médico tem bloqueio de agenda ativo na data informada.
+async function isDoctorLockedOnDate(doctorId, date) {
+  const { start, end } = dayRange(date);
+  const lock = await prisma.doctorScheduleLock.findFirst({
+    where: {
+      doctorId,
+      active: true,
+      date: { gte: start, lt: end },
+    },
+  });
+  return !!lock;
+}
+
 // Retorna o médico com menos consultas agendadas no dia, preferindo o mesmo unit/specialty.
+// Médicos com agenda bloqueada na data são excluídos.
 async function findLeastBusyDoctor(unit, specialty, date) {
   const whereDoctor = { role: "medico", specialty };
   let doctors = await prisma.user.findMany({ where: { ...whereDoctor, unit } });
@@ -91,6 +111,8 @@ async function findLeastBusyDoctor(unit, specialty, date) {
   let bestCount = Infinity;
 
   for (const doc of doctors) {
+    if (await isDoctorLockedOnDate(doc.id, date)) continue;
+
     const count = await prisma.appointment.count({
       where: {
         doctorId: doc.id,
@@ -270,13 +292,27 @@ api.get("/appointments", requireAuth, async (req, res) => {
   });
   res.json(appts.map(toAppt));
 });
+api.get("/appointments/:id", requireAuth, async (req, res) => {
+  const a = await prisma.appointment.findUnique({
+    where: { id: req.params.id },
+    include: { patient: true },
+  });
+  if (!a) return res.status(404).json({ detail: "Consulta não encontrada" });
+  res.json(toAppt(a));
+});
 api.post(
   "/appointments",
   requireAuth,
   requireRoles("atendente", "admin"),
   async (req, res) => {
     const unit = req.body.unit || "UBS Central";
-    const modality = req.body.modality === "online" ? "online" : "presencial";
+    // Consultas cadastradas pelo atendente são sempre presenciais.
+    const modality =
+      req.user.role === "atendente"
+        ? "presencial"
+        : req.body.modality === "online"
+          ? "online"
+          : "presencial";
     const scheduledAt = new Date(req.body.scheduled_at);
 
     if (modality === "online") {
@@ -295,7 +331,15 @@ api.post(
     );
     if (!doctor) {
       return res.status(400).json({
-        detail: "Nenhum médico disponível foi encontrado para essa consulta.",
+        detail:
+          "Nenhum médico disponível foi encontrado para essa consulta. Verifique se a agenda não está bloqueada.",
+      });
+    }
+
+    if (await isDoctorLockedOnDate(doctor.id, scheduledAt)) {
+      return res.status(400).json({
+        detail:
+          "A agenda do médico selecionado está bloqueada nesta data. Escolha outro horário ou desbloqueie a agenda.",
       });
     }
 
@@ -318,9 +362,27 @@ api.patch("/appointments/:id", requireAuth, async (req, res) => {
     where: { id: req.params.id },
   });
   if (!a) return res.status(404).json({ detail: "Consulta não encontrada" });
+
+  const newStatus = req.body.status;
+  if (newStatus === "compareceu") {
+    if (a.status === "compareceu") {
+      return res.json({ ok: true, already_attended: true });
+    }
+    if (a.status === "bloqueio_medico") {
+      return res.status(400).json({
+        detail: "Esta consulta foi cancelada por bloqueio de agenda.",
+      });
+    }
+    if (a.status === "faltou") {
+      return res.status(400).json({
+        detail: "Esta consulta já foi marcada como falta.",
+      });
+    }
+  }
+
   await prisma.appointment.update({
     where: { id: a.id },
-    data: { status: req.body.status, justification: req.body.justification },
+    data: { status: newStatus, justification: req.body.justification },
   });
   if (req.body.status === "faltou" && !req.body.justification) {
     const p = await prisma.patient.update({
@@ -362,8 +424,13 @@ api.get("/queue/today", requireAuth, async (req, res) => {
   // (imprevisto registrado pelo atendente), para exibir um aviso na tela.
   let lock = null;
   if (req.user.role === "medico") {
+    const { start, end } = dayRange(new Date());
     const activeLock = await prisma.doctorScheduleLock.findFirst({
-      where: { doctorId: req.user.id, date: start, active: true },
+      where: {
+        doctorId: req.user.id,
+        active: true,
+        date: { gte: start, lt: end },
+      },
     });
     if (activeLock) {
       lock = {
@@ -411,9 +478,8 @@ api.post(
       });
     }
 
-    // Converter date (YYYY-MM-DD) para DateTime às 00:00
-    const lockDate = new Date(date);
-    lockDate.setHours(0, 0, 0, 0);
+    // Converter date (YYYY-MM-DD) para meia-noite local
+    const lockDate = parseLocalDate(date);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -424,11 +490,12 @@ api.post(
     }
 
     // Verificar se já existe bloqueio ativo para este médico neste dia
+    const dayEnd = new Date(lockDate.getTime() + 24 * 60 * 60 * 1000);
     const existingLock = await prisma.doctorScheduleLock.findFirst({
       where: {
         doctorId: doctor_id,
-        date: lockDate,
         active: true,
+        date: { gte: lockDate, lt: dayEnd },
       },
     });
 
@@ -574,9 +641,7 @@ api.get(
       });
     }
 
-    // Converter para DateTime
-    const queryDate = new Date(date);
-    queryDate.setHours(0, 0, 0, 0);
+    const queryDate = parseLocalDate(date);
 
     // Buscar todos os médicos
     const doctors = await prisma.user.findMany({
@@ -590,7 +655,7 @@ api.get(
         const activeLock = await prisma.doctorScheduleLock.findFirst({
           where: {
             doctorId: doctor.id,
-            date: queryDate,
+            date: { gte: dayStart, lt: dayEnd },
             active: true,
           },
         });
