@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Calendar, Users, Search, Plus, Lock, LockOpen, AlertTriangle } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Search,
+  Plus,
+  Lock,
+  LockOpen,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -46,7 +54,7 @@ export default function AtendenteDashboard() {
     const today = new Date().toISOString().slice(0, 10);
     const a = await api.get(`/appointments?date=${today}`);
     setAppts(a.data);
-    
+
     // Carregar médicos da unidade do atendente
     if (user?.unit) {
       const docsRes = await api.get("/users?role=medico");
@@ -131,7 +139,11 @@ export default function AtendenteDashboard() {
   };
 
   const handleUnlockDoctor = async (lockId) => {
-    if (!confirm("Desbloquear agenda? Consultas já canceladas não retornarão automaticamente.")) {
+    if (
+      !confirm(
+        "Desbloquear agenda? Consultas já canceladas não retornarão automaticamente.",
+      )
+    ) {
       return;
     }
     setLockingInProgress(true);
@@ -440,8 +452,9 @@ export default function AtendenteDashboard() {
             </div>
           )}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
-            <strong>💡 Dica:</strong> Use este gerenciador quando o médico avisar de um imprevisto.
-            A agenda será bloqueada imediatamente e os pacientes serão notificados.
+            <strong>💡 Dica:</strong> Use este gerenciador quando o médico
+            avisar de um imprevisto. A agenda será bloqueada imediatamente e os
+            pacientes serão notificados.
           </div>
         </div>
       </div>
@@ -727,7 +740,9 @@ function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
         </div>
 
         <div className="mb-4 p-3 bg-slate-50 rounded border border-slate-200">
-          <div className="text-sm font-semibold text-[#1D3557]">{doctor.name}</div>
+          <div className="text-sm font-semibold text-[#1D3557]">
+            {doctor.name}
+          </div>
           <div className="text-xs text-slate-600">{doctor.specialty}</div>
         </div>
 
