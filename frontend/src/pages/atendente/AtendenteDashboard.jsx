@@ -390,7 +390,7 @@ export default function AtendenteDashboard() {
         {/* Bloquear/Desbloquear Agenda do Médico */}
         <div className="sc-card">
           <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
-            ⚠️ Gerenciar Bloqueio de Agenda
+            Gerenciar Bloqueio de Agenda
           </h2>
           {doctors.length === 0 ? (
             <div className="text-sm text-slate-400 py-4">
@@ -431,7 +431,7 @@ export default function AtendenteDashboard() {
                       </div>
                       {hasActiveLock && activeLock && (
                         <div className="text-xs text-[#E76F51] mt-1 font-semibold">
-                          🔒 Bloqueado hoje: {activeLock.reason}
+                           Bloqueado hoje: {activeLock.reason}
                         </div>
                       )}
                       {upcomingLocks.map((lock) => (
@@ -440,7 +440,7 @@ export default function AtendenteDashboard() {
                           className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
                         >
                           <span>
-                            📅 Bloqueio agendado para{" "}
+                            Bloqueio agendado para{" "}
                             {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
                             {lock.reason}
                           </span>
@@ -477,7 +477,7 @@ export default function AtendenteDashboard() {
             </div>
           )}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
-            <strong>💡 Dica:</strong> Use este gerenciador quando o médico
+            <strong>Dica:</strong> Use este gerenciador quando o médico
             avisar de um imprevisto. A agenda será bloqueada imediatamente e os
             pacientes serão notificados.
           </div>
