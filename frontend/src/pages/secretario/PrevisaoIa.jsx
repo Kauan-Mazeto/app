@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Brain, TrendingUp, AlertTriangle, Lightbulb, RefreshCw } from "lucide-react";
+import { SPECIALTIES } from "@/lib/specialties";
 
 const TIPOS_FILTRO = [
     { value: "estacao", label: "Estacao do Ano" },
@@ -19,10 +20,7 @@ const ESTACOES = [
     { value: "primavera", label: "Primavera (Set-Out-Nov)" },
 ];
 
-const ESPECIALIDADES = [
-    "Clinica Geral", "Pediatria", "Ginecologia", "Cardiologia",
-    "Ortopedia", "Psiquiatria", "Neurologia", "Dermatologia", "Oftalmologia", "Endocrinologia",
-];
+const ESPECIALIDADES = SPECIALTIES;
 
 const IMPACTO_COLOR = { alto: "text-[#E76F51]", medio: "text-[#E9C46A]", baixo: "text-[#1E4620]" };
 const CONFIANCA_COLOR = { alta: "text-[#1E4620]", media: "text-[#457B9D]", baixa: "text-[#E9C46A]" };

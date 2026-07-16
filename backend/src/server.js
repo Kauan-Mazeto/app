@@ -13,6 +13,23 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Lista canônica de especialidades médicas. Precisa ficar IDÊNTICA à lista em
+// frontend/src/lib/specialties.js — existe nos dois lugares porque backend e
+// frontend não compartilham módulos neste projeto. Se adicionar uma
+// especialidade, atualize as duas listas.
+const SPECIALTIES = [
+  "Clínica Geral",
+  "Pediatria",
+  "Ginecologia",
+  "Cardiologia",
+  "Ortopedia",
+  "Psiquiatria",
+  "Neurologia",
+  "Dermatologia",
+  "Oftalmologia",
+  "Endocrinologia",
+];
 const api = express.Router();
 
 const toPatient = (p) => ({
@@ -193,6 +210,14 @@ api.post("/users", requireAuth, requireRoles("admin"), async (req, res) => {
   const { email, password, name, role, crm, specialty, unit } = req.body;
   if (await prisma.user.findUnique({ where: { email: email.toLowerCase() } }))
     return res.status(400).json({ detail: "Email já cadastrado" });
+  if (role === "medico") {
+    if (!crm?.trim()) return res.status(400).json({ detail: "CRM é obrigatório para médicos" });
+    if (!SPECIALTIES.includes(specialty)) {
+      return res.status(400).json({
+        detail: `Especialidade inválida. Selecione uma da lista: ${SPECIALTIES.join(", ")}`,
+      });
+    }
+  }
   const u = await prisma.user.create({
     data: {
       email: email.toLowerCase(),

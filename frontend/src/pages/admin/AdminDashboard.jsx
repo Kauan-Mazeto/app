@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { UserPlus, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Search } from "lucide-react";
+import { SPECIALTIES } from "@/lib/specialties";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [nu, setNu] = useState({ name: "", email: "", password: "", role: "medico", crm: "", specialty: "", unit: "UBS Central" });
+  const [specialtyQuery, setSpecialtyQuery] = useState("");
+  const [showSpecialtyOptions, setShowSpecialtyOptions] = useState(false);
 
   const load = async () => {
     const { data } = await api.get("/users");
@@ -19,7 +22,10 @@ export default function AdminDashboard() {
     try {
       await api.post("/users", nu);
       toast.success("Profissional cadastrado");
-      setShow(false); load();
+      setShow(false);
+      setNu({ name: "", email: "", password: "", role: "medico", crm: "", specialty: "", unit: "UBS Central" });
+      setSpecialtyQuery("");
+      load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro");
     }
@@ -150,7 +156,54 @@ export default function AdminDashboard() {
               </F>
               {nu.role === "medico" && <>
                 <F label="CRM"><input value={nu.crm} onChange={(e) => setNu({...nu, crm: e.target.value})} className="inp" /></F>
-                <F label="Especialidade"><input value={nu.specialty} onChange={(e) => setNu({...nu, specialty: e.target.value})} className="inp" /></F>
+                <F label="Especialidade">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      data-testid="nu-specialty"
+                      value={nu.specialty ? nu.specialty : specialtyQuery}
+                      onChange={(e) => {
+                        setSpecialtyQuery(e.target.value);
+                        setNu({ ...nu, specialty: "" });
+                        setShowSpecialtyOptions(true);
+                      }}
+                      onFocus={() => {
+                        if (nu.specialty) { setSpecialtyQuery(nu.specialty); setNu({ ...nu, specialty: "" }); }
+                        setShowSpecialtyOptions(true);
+                      }}
+                      placeholder="Buscar especialidade..."
+                      className="inp pl-9"
+                      autoComplete="off"
+                    />
+                    {showSpecialtyOptions && (
+                      <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-md shadow-lg">
+                        {SPECIALTIES.filter((s) =>
+                          s.toLowerCase().includes(specialtyQuery.trim().toLowerCase())
+                        ).map((s) => (
+                          <button
+                            type="button"
+                            key={s}
+                            onClick={() => {
+                              setNu({ ...nu, specialty: s });
+                              setSpecialtyQuery("");
+                              setShowSpecialtyOptions(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                        {SPECIALTIES.filter((s) =>
+                          s.toLowerCase().includes(specialtyQuery.trim().toLowerCase())
+                        ).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-slate-400">
+                            Nenhuma especialidade encontrada.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </F>
               </>}
               <F label="Unidade"><input value={nu.unit} onChange={(e) => setNu({...nu, unit: e.target.value})} className="inp" /></F>
             </div>
@@ -165,7 +218,14 @@ export default function AdminDashboard() {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button onClick={() => setShow(false)} className="px-4 py-2 border border-slate-200 rounded-md text-sm">Cancelar</button>
-              <button data-testid="nu-submit" onClick={save} className="px-4 py-2 bg-[#1D3557] text-white rounded-md text-sm font-semibold">Cadastrar</button>
+              <button
+                data-testid="nu-submit"
+                onClick={save}
+                disabled={!nu.name || !nu.email || !nu.password || (nu.role === "medico" && (!nu.crm || !SPECIALTIES.includes(nu.specialty)))}
+                className="px-4 py-2 bg-[#1D3557] text-white rounded-md text-sm font-semibold disabled:opacity-50"
+              >
+                Cadastrar
+              </button>
             </div>
           </div>
         </div>
