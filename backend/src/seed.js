@@ -355,7 +355,6 @@ async function criarFilaEVagas(patients) {
 }
 
 async function criarAuditLogs(usuarios) {
-  console.log("📝 Criando logs de auditoria...");
   const acoes = [
     "login", "logout", "criou_consulta", "cancelou_consulta", "atualizou_estoque",
     "criou_prescricao", "liberou_exame", "bloqueou_agenda_medico", "desbloqueou_agenda_medico",
