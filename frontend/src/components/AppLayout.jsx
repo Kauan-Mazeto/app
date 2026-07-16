@@ -19,7 +19,7 @@ import {
 const navByRole = {
   medico: [
     { to: "/medico", label: "Fila do Dia", icon: LayoutDashboard, end: true },
-    { to: "/atendente/refs", label: "CID / TUSS / SIGTAP", icon: Search },
+    { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
   ],
   atendente: [
     {
