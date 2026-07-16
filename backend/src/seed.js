@@ -10,7 +10,7 @@ const hash = (pw) => bcrypt.hash(pw, 10);
 const validationCode = () => `GOVBR-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
 
 async function limparBanco() {
-  console.log("LIMPANDO BANCO...");
+  console.log("🧹 Limpando banco...");
   await prisma.appointment.deleteMany();
   await prisma.prescription.deleteMany();
   await prisma.exam.deleteMany();
@@ -25,22 +25,22 @@ async function limparBanco() {
   await prisma.healthUnit.deleteMany();
   await prisma.appointmentConfig.deleteMany();
   await prisma.onlineSlotConfig.deleteMany();
-  console.log("BANCO LIMPO OK");
+  console.log("   → banco limpo");
 }
 
 async function criarUnidades() {
-  console.log("CRIANDO UNIDADES...");
+  console.log("🏥 Criando unidades...");
   const nomes = ["UBS Central", "UBS Zona Sul", "UBS Zona Norte"];
   const unidades = [];
   for (const name of nomes) {
     unidades.push(await prisma.healthUnit.create({ data: { name } }));
   }
-  console.log("UNIDADES OK:", unidades.length);
+  console.log(`   → ${unidades.length} unidades criadas`);
   return unidades;
 }
 
 async function criarUsuarios(unidades) {
-  console.log("CRIANDO USUARIOS...");
+  console.log("👥 Criando usuários...");
   const [central, zonaSul, zonaNorte] = unidades;
 
   const defs = [
@@ -48,8 +48,10 @@ async function criarUsuarios(unidades) {
     { email: "secretario@saudeconecta.gov.br", name: "Carlos Mendes", role: "secretario", pw: "senha123" },
     { email: "atendente@saudeconecta.gov.br", name: "Marta Silva", role: "atendente", unit: "UBS Central", healthUnitId: central.id, pw: "senha123" },
     { email: "medico@saudeconecta.gov.br", name: "Dra. Ana Ribeiro", role: "medico", crm: "CRM-SP 12345", specialty: "Clínica Geral", unit: "UBS Central", healthUnitId: central.id, pw: "senha123" },
+
     { email: "atendente.sul@saudeconecta.gov.br", name: "Jussara Pinto", role: "atendente", unit: "UBS Zona Sul", healthUnitId: zonaSul.id, pw: "senha123" },
     { email: "atendente.norte@saudeconecta.gov.br", name: "Vanessa Rocha", role: "atendente", unit: "UBS Zona Norte", healthUnitId: zonaNorte.id, pw: "senha123" },
+
     { email: "cardio@saudeconecta.gov.br", name: "Dr. Bruno Alves", role: "medico", crm: "CRM-SP 22333", specialty: "Cardiologia", unit: "UBS Zona Sul", healthUnitId: zonaSul.id, pw: "senha123" },
     { email: "pediatra@saudeconecta.gov.br", name: "Dra. Camila Torres", role: "medico", crm: "CRM-SP 33221", specialty: "Pediatria", unit: "UBS Central", healthUnitId: central.id, pw: "senha123" },
     { email: "gineco@saudeconecta.gov.br", name: "Dra. Débora Nunes", role: "medico", crm: "CRM-SP 44556", specialty: "Ginecologia", unit: "UBS Zona Norte", healthUnitId: zonaNorte.id, pw: "senha123" },
@@ -63,12 +65,12 @@ async function criarUsuarios(unidades) {
     const { pw, ...rest } = d;
     users.push(await prisma.user.create({ data: { ...rest, passwordHash: await hash(pw) } }));
   }
-  console.log("USUARIOS OK:", users.length);
+  console.log(`   → ${users.length} usuários criados`);
   return users;
 }
 
 async function criarPacientes() {
-  console.log("CRIANDO PACIENTES...");
+  console.log("🧑‍🤝‍🧑 Criando pacientes...");
   const nomes = [
     "João Souza", "Maria Oliveira", "Pedro Santos", "Ana Costa", "Luiza Pereira",
     "Carlos Lima", "Beatriz Fernandes", "Rafael Almeida", "Sofia Rodrigues", "Miguel Barbosa",
@@ -96,14 +98,15 @@ async function criarPacientes() {
       }
     }));
   }
-  console.log("PACIENTES OK:", patients.length);
+  console.log(`   → ${patients.length} pacientes criados`);
   return patients;
 }
 
 async function criarAppointments(patients, medicos) {
-  console.log("CRIANDO CONSULTAS...");
+  console.log("📅 Criando consultas...");
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
+
   const prioridades = ["normal", "normal", "normal", "preferencial", "urgente"];
   const unidadesNome = ["UBS Central", "UBS Zona Sul", "UBS Zona Norte"];
   let count = 0;
@@ -112,17 +115,24 @@ async function criarAppointments(patients, medicos) {
     const dia = new Date(hoje);
     dia.setDate(dia.getDate() + d);
     const qtdNoDia = randInt(2, 6);
+
     for (let i = 0; i < qtdNoDia; i++) {
       const medico = rand(medicos);
       const paciente = rand(patients);
       const dt = new Date(dia);
       dt.setHours(randInt(8, 17), rand([0, 30]), 0, 0);
+
       await prisma.appointment.create({
         data: {
-          patientId: paciente.id, doctorId: medico.id, specialty: medico.specialty || "Clínica Geral",
-          scheduledAt: dt, priority: rand(prioridades), unit: medico.unit || rand(unidadesNome),
+          patientId: paciente.id,
+          doctorId: medico.id,
+          specialty: medico.specialty || "Clínica Geral",
+          scheduledAt: dt,
+          priority: rand(prioridades),
+          unit: medico.unit || rand(unidadesNome),
           status: rand(["compareceu", "compareceu", "compareceu", "faltou", "cancelado"]),
-          checkedIn: true, type: rand(["presencial", "presencial", "online"]),
+          checkedIn: true,
+          type: rand(["presencial", "presencial", "online"]),
           justification: Math.random() < 0.1 ? "Paciente remarcado por solicitação própria" : null,
           createdAt: new Date(dt.getTime() - 1000 * 60 * 60 * 24 * randInt(1, 10)),
         }
@@ -135,26 +145,34 @@ async function criarAppointments(patients, medicos) {
     const dia = new Date(hoje);
     dia.setDate(dia.getDate() + d);
     const qtdNoDia = randInt(3, 8);
+
     for (let i = 0; i < qtdNoDia; i++) {
       const medico = rand(medicos);
       const paciente = rand(patients);
       const dt = new Date(dia);
       dt.setHours(randInt(8, 17), rand([0, 30]), 0, 0);
+
       await prisma.appointment.create({
         data: {
-          patientId: paciente.id, doctorId: medico.id, specialty: medico.specialty || "Clínica Geral",
-          scheduledAt: dt, priority: rand(prioridades), unit: medico.unit || rand(unidadesNome),
-          status: "aguardando", checkedIn: false, type: rand(["presencial", "presencial", "online"]),
+          patientId: paciente.id,
+          doctorId: medico.id,
+          specialty: medico.specialty || "Clínica Geral",
+          scheduledAt: dt,
+          priority: rand(prioridades),
+          unit: medico.unit || rand(unidadesNome),
+          status: "aguardando",
+          checkedIn: false,
+          type: rand(["presencial", "presencial", "online"]),
         }
       });
       count++;
     }
   }
-  console.log("CONSULTAS OK:", count);
+  console.log(`   → ${count} consultas criadas`);
 }
 
 async function criarPrescricoes(patients, medicos) {
-  console.log("CRIANDO PRESCRICOES...");
+  console.log("💊 Criando prescrições...");
   const meds = [
     ["Losartana 50mg", "Losartana Potássica", "1 comprimido", "1x ao dia", ["08:00"]],
     ["Metformina 850mg", "Metformina", "1 comprimido", "2x ao dia", ["08:00", "20:00"]],
@@ -176,12 +194,22 @@ async function criarPrescricoes(patients, medicos) {
       const doc = rand(medicos);
       const diasAtras = randInt(0, 180);
       const createdAt = new Date(Date.now() - 1000 * 60 * 60 * 24 * diasAtras);
+
       await prisma.prescription.create({
         data: {
-          patientId: patients[i].id, doctorId: doc.id, doctorName: doc.name, doctorCrm: doc.crm,
-          medication: m[0], activeSubstance: m[1], dosage: m[2], frequency: m[3],
-          durationDays: rand([7, 14, 30, 60, 90]), route: "Oral", schedule: JSON.stringify(m[4]),
-          validationCode: validationCode(), active: diasAtras < 30,
+          patientId: patients[i].id,
+          doctorId: doc.id,
+          doctorName: doc.name,
+          doctorCrm: doc.crm,
+          medication: m[0],
+          activeSubstance: m[1],
+          dosage: m[2],
+          frequency: m[3],
+          durationDays: rand([7, 14, 30, 60, 90]),
+          route: "Oral",
+          schedule: JSON.stringify(m[4]),
+          validationCode: validationCode(),
+          active: diasAtras < 30,
           adherenceLogs: JSON.stringify(
             Array.from({ length: randInt(0, 5) }, () => ({
               date: new Date(createdAt.getTime() + 1000 * 60 * 60 * 24 * randInt(0, 20)).toISOString(),
@@ -194,11 +222,11 @@ async function criarPrescricoes(patients, medicos) {
       count++;
     }
   }
-  console.log("PRESCRICOES OK:", count);
+  console.log(`   → ${count} prescrições criadas`);
 }
 
 async function criarExames(patients, medicos) {
-  console.log("CRIANDO EXAMES...");
+  console.log("🧪 Criando exames...");
   const exs = [
     "Hemograma completo", "Glicemia em jejum", "Colesterol total", "Eletrocardiograma",
     "Ultrassonografia abdominal", "Raio-X de tórax", "Exame de urina (EAS)", "TSH e T4 livre",
@@ -212,23 +240,28 @@ async function criarExames(patients, medicos) {
     const requestante = rand(medicos);
     const entregador = status === "retirado" ? rand(medicos) : null;
     const diasAtras = randInt(0, 120);
+
     await prisma.exam.create({
       data: {
-        patientId: rand(patients).id, exam: rand(exs),
+        patientId: rand(patients).id,
+        exam: rand(exs),
         preparationNotes: Math.random() < 0.3 ? "Jejum de 8 horas obrigatório" : null,
-        urgent: Math.random() < 0.15, status, lab_externo: rand(laboratorios),
-        requestedById: requestante.id, deliveredById: entregador?.id,
+        urgent: Math.random() < 0.15,
+        status,
+        lab_externo: rand(laboratorios),
+        requestedById: requestante.id,
+        deliveredById: entregador?.id,
         deliveredAt: status === "retirado" ? new Date(Date.now() - 1000 * 60 * 60 * 24 * randInt(0, diasAtras)) : null,
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * diasAtras),
       }
     });
     count++;
   }
-  console.log("EXAMES OK:", count);
+  console.log(`   → ${count} exames criados`);
 }
 
 async function criarEstoque(unidades, usuarios) {
-  console.log("CRIANDO ESTOQUE...");
+  console.log("📦 Criando estoque...");
   const medicamentos = [
     { id: "med-losartana-50", name: "Losartana 50mg" },
     { id: "med-metformina-850", name: "Metformina 850mg" },
@@ -239,39 +272,63 @@ async function criarEstoque(unidades, usuarios) {
     { id: "med-soro-reidratacao", name: "Soro de Reidratação Oral" },
     { id: "med-ibuprofeno-600", name: "Ibuprofeno 600mg" },
   ];
+
   const atendentesEAdmins = usuarios.filter((u) => ["atendente", "admin", "secretario"].includes(u.role));
 
   for (const unidade of unidades) {
     for (const med of medicamentos) {
+      const quantidadeAtual = randInt(0, 200);
       await prisma.medicineStock.create({
-        data: { healthUnitId: unidade.id, medicineId: med.id, quantity: randInt(0, 200) }
+        data: {
+          healthUnitId: unidade.id,
+          medicineId: med.id,
+          quantity: quantidadeAtual,
+        }
       });
+
       const qtdTransacoes = randInt(3, 8);
       for (let t = 0; t < qtdTransacoes; t++) {
-        const tipo = rand(["entrada", "saida", "saida", "ajuste"]);
+        const tipoInterno = rand(["entrada", "saida", "saida", "ajuste"]);
+        // O backend espera type "ENTRY"/"EXIT" (é o que /stock/entry e /stock/exit gravam)
+        const type = tipoInterno === "saida" ? "EXIT" : "ENTRY";
         const usuario = rand(atendentesEAdmins);
+        // medicineDetails precisa ser SEMPRE um JSON válido (a rota /stock/transactions
+        // faz JSON.parse nele) — nunca gravar texto puro aqui.
+        const medicineDetails = JSON.stringify({
+          medicineId: med.id,
+          medicineName: med.name,
+          dosage: "",
+          lot: Math.random() < 0.5 ? `LOTE-${randInt(1000, 9999)}` : "",
+          notes: Math.random() < 0.3 ? "Lote fornecido pelo Ministério da Saúde" : "",
+          type,
+        });
         await prisma.stockTransaction.create({
           data: {
-            healthUnitId: unidade.id, medicineId: med.id, medicineName: med.name,
-            medicineDetails: Math.random() < 0.3 ? "Lote fornecido pelo Ministério da Saúde" : null,
-            userId: usuario.id, type: tipo, quantity: tipo === "saida" ? -randInt(1, 20) : randInt(5, 50),
+            healthUnitId: unidade.id,
+            medicineId: med.id,
+            medicineName: med.name,
+            medicineDetails,
+            userId: usuario.id,
+            type,
+            quantity: type === "EXIT" ? -randInt(1, 20) : randInt(5, 50),
             createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * randInt(0, 60)),
           }
         });
       }
     }
   }
-  console.log("ESTOQUE OK");
+  console.log(`   → estoque criado para ${unidades.length} unidades`);
 }
 
 async function criarFilaEVagas(patients) {
-  console.log("CRIANDO FILA E VAGAS...");
+  console.log("⏳ Criando fila de espera e vagas...");
   const specs = ["Cardiologia", "Endocrinologia", "Clínica Geral", "Ortopedia", "Ginecologia", "Pediatria"];
 
   for (let i = 0; i < 15; i++) {
     await prisma.waitingList.create({
       data: {
-        patientId: rand(patients).id, specialty: rand(specs),
+        patientId: rand(patients).id,
+        specialty: rand(specs),
         status: rand(["waiting", "waiting", "waiting", "called", "cancelled"]),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * randInt(0, 45)),
       }
@@ -284,17 +341,21 @@ async function criarFilaEVagas(patients) {
     const deadline = new Date(notifiedAt.getTime() + 1000 * 60 * 30);
     await prisma.vacancy.create({
       data: {
-        patientId: paciente.id, patientName: paciente.name, specialty: rand(specs),
+        patientId: paciente.id,
+        patientName: paciente.name,
+        specialty: rand(specs),
         unit: rand(["UBS Central", "UBS Zona Sul", "UBS Zona Norte"]),
-        notifiedAt, deadline, status: rand(["waiting_response", "waiting_response", "accepted", "expired"]),
+        notifiedAt,
+        deadline,
+        status: rand(["waiting_response", "waiting_response", "accepted", "expired"]),
       }
     });
   }
-  console.log("FILA E VAGAS OK");
+  console.log("   → fila e vagas criadas");
 }
 
 async function criarAuditLogs(usuarios) {
-  console.log("CRIANDO LOGS...");
+  console.log("📝 Criando logs de auditoria...");
   const acoes = [
     "login", "logout", "criou_consulta", "cancelou_consulta", "atualizou_estoque",
     "criou_prescricao", "liberou_exame", "bloqueou_agenda_medico", "desbloqueou_agenda_medico",
@@ -304,26 +365,33 @@ async function criarAuditLogs(usuarios) {
     const usuario = rand(usuarios);
     await prisma.auditLog.create({
       data: {
-        userId: usuario.id, userName: usuario.name, userRole: usuario.role,
-        action: rand(acoes), target: Math.random() < 0.5 ? `appointment:${randomUUID()}` : `patient:${randomUUID()}`,
+        userId: usuario.id,
+        userName: usuario.name,
+        userRole: usuario.role,
+        action: rand(acoes),
+        target: Math.random() < 0.5 ? `appointment:${randomUUID()}` : `patient:${randomUUID()}`,
         details: JSON.stringify({ ip: `192.168.0.${randInt(1, 254)}`, origem: rand(["web", "mobile"]) }),
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * randInt(0, 24 * 60)),
       }
     });
   }
-  console.log("LOGS OK");
+  console.log("   → 40 logs criados");
 }
 
 async function criarConfigsAgenda(usuarios) {
-  console.log("CRIANDO CONFIGS...");
+  console.log("⚙️  Criando configs de agenda...");
   const admin = usuarios.find((u) => u.role === "admin");
   const specs = ["Clínica Geral", "Cardiologia", "Pediatria", "Ginecologia", "Ortopedia", "Endocrinologia"];
 
   for (const specialty of specs) {
     await prisma.appointmentConfig.create({
       data: {
-        specialty, dayOfWeek: randInt(0, 6), maxOnlineSlots: randInt(5, 15),
-        maxTotalSlots: randInt(15, 30), active: true, createdById: admin.id,
+        specialty,
+        dayOfWeek: randInt(0, 6),
+        maxOnlineSlots: randInt(5, 15),
+        maxTotalSlots: randInt(15, 30),
+        active: true,
+        createdById: admin.id,
       }
     });
   }
@@ -332,15 +400,20 @@ async function criarConfigsAgenda(usuarios) {
   for (const unit of unidadesNome) {
     for (let dow = 0; dow <= 6; dow++) {
       await prisma.onlineSlotConfig.create({
-        data: { unit, dayOfWeek: dow, onlinePercentage: rand([30, 40, 50, 60]), maxOnlineSlots: randInt(5, 20) }
+        data: {
+          unit,
+          dayOfWeek: dow,
+          onlinePercentage: rand([30, 40, 50, 60]),
+          maxOnlineSlots: randInt(5, 20),
+        }
       });
     }
   }
-  console.log("CONFIGS OK");
+  console.log("   → configs de agenda criadas");
 }
 
 async function criarBloqueiosAgenda(medicos, usuarios) {
-  console.log("CRIANDO BLOQUEIOS...");
+  console.log("🔒 Criando bloqueios de agenda...");
   const admins = usuarios.filter((u) => ["admin", "secretario"].includes(u.role));
   const motivos = ["Férias", "Licença médica", "Congresso médico", "Atestado"];
 
@@ -349,24 +422,30 @@ async function criarBloqueiosAgenda(medicos, usuarios) {
     const lockedBy = rand(admins);
     const date = new Date(Date.now() + 1000 * 60 * 60 * 24 * randInt(-10, 20));
     const jaResolvido = i % 2 === 0;
+
     await prisma.doctorScheduleLock.create({
       data: {
-        doctorId: medico.id, date, reason: rand(motivos), lockedById: lockedBy.id,
-        active: !jaResolvido, unlockedAt: jaResolvido ? new Date() : null,
+        doctorId: medico.id,
+        date,
+        reason: rand(motivos),
+        lockedById: lockedBy.id,
+        active: !jaResolvido,
+        unlockedAt: jaResolvido ? new Date() : null,
         unlockedById: jaResolvido ? rand(admins).id : null,
       }
     });
   }
-  console.log("BLOQUEIOS OK");
+  console.log("   → 4 bloqueios criados");
 }
 
 async function main() {
-  console.log("=== INICIO DO SEED ===");
   await limparBanco();
+
   const unidades = await criarUnidades();
   const usuarios = await criarUsuarios(unidades);
   const medicos = usuarios.filter((u) => u.role === "medico" && u.active);
   const patients = await criarPacientes();
+
   await criarAppointments(patients, medicos);
   await criarPrescricoes(patients, medicos);
   await criarExames(patients, medicos);
@@ -377,12 +456,14 @@ async function main() {
   await criarBloqueiosAgenda(medicos, usuarios);
 
   const totalUsers = await prisma.user.count();
-  console.log("=== SEED FINALIZADO. TOTAL DE USUARIOS:", totalUsers, "===");
+  const totalPatients = await prisma.patient.count();
+  const totalAppointments = await prisma.appointment.count();
+  console.log(`\n✅ Seed completo! users=${totalUsers} patients=${totalPatients} appointments=${totalAppointments}`);
 }
 
 main()
   .catch((e) => {
-    console.error("=== DEU ERRO NO SEED ===", e);
+    console.error("❌ Erro no seed:", e);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

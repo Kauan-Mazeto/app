@@ -1208,22 +1208,20 @@ api.post(
       type: "ENTRY",
     });
     const [stock] = await prisma.$transaction([
-      prisma.medicineStock.fields
-        ? null
-        : prisma.medicineStock.upsert({
-            where: {
-              healthUnitId_medicineId: {
-                healthUnitId: selectedUnit.id,
-                medicineId,
-              },
-            },
-            update: { quantity: { increment: qty } },
-            create: {
-              healthUnitId: selectedUnit.id,
-              medicineId,
-              quantity: qty,
-            },
-          }),
+      prisma.medicineStock.upsert({
+        where: {
+          healthUnitId_medicineId: {
+            healthUnitId: selectedUnit.id,
+            medicineId,
+          },
+        },
+        update: { quantity: { increment: qty } },
+        create: {
+          healthUnitId: selectedUnit.id,
+          medicineId,
+          quantity: qty,
+        },
+      }),
       prisma.stockTransaction.create({
         data: {
           healthUnitId: selectedUnit.id,
@@ -1343,13 +1341,13 @@ api.post(
         prisma.medicineStock.upsert({
           where: {
             healthUnitId_medicineId: {
-              healthUnitId: user.healthUnitId,
+              healthUnitId: selectedUnit.id,
               medicineId,
             },
           },
           update: { quantity: { increment: qty } },
           create: {
-            healthUnitId: user.healthUnitId,
+            healthUnitId: selectedUnit.id,
             medicineId,
             quantity: qty,
           },
@@ -1359,7 +1357,7 @@ api.post(
             healthUnitId: selectedUnit.id,
             medicineId,
             medicineName: medicineName || medicineId,
-            medicineDetails: medicineDetailsEntry,
+            medicineDetails,
             userId: user.id,
             type: "ENTRY",
             quantity: qty,
