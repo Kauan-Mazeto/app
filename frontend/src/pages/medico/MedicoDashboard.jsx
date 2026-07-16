@@ -33,7 +33,19 @@ export default function MedicoDashboard() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Atualiza sozinho a cada 60s e sempre que a aba volta ao foco — sem
+    // isso, a fila fica "congelada" com os dados do primeiro carregamento
+    // mesmo depois que o dia vira (só atualizava com F5 manual).
+    const interval = setInterval(load, 60000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   const markStatus = async (id, status) => {
     try {

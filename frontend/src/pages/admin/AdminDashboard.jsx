@@ -168,7 +168,10 @@ export default function AdminDashboard() {
                         setShowSpecialtyOptions(true);
                       }}
                       onFocus={() => {
-                        if (nu.specialty) { setSpecialtyQuery(nu.specialty); setNu({ ...nu, specialty: "" }); }
+                        // Não pré-preenche a busca com o valor já selecionado —
+                        // isso filtrava a lista para mostrar só a opção atual.
+                        if (nu.specialty) setNu({ ...nu, specialty: "" });
+                        setSpecialtyQuery("");
                         setShowSpecialtyOptions(true);
                       }}
                       placeholder="Buscar especialidade..."

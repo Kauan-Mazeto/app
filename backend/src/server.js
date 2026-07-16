@@ -115,12 +115,12 @@ async function isDoctorLockedOnDate(doctorId, date) {
 // Retorna o médico com menos consultas agendadas no dia, preferindo o mesmo unit/specialty.
 // Médicos com agenda bloqueada na data são excluídos.
 async function findLeastBusyDoctor(unit, specialty, date) {
-  const whereDoctor = { role: "medico", specialty };
-  let doctors = await prisma.user.findMany({ where: { ...whereDoctor, unit } });
-  if (!doctors.length)
-    doctors = await prisma.user.findMany({ where: whereDoctor });
-  if (!doctors.length)
-    doctors = await prisma.user.findMany({ where: { role: "medico" } });
+  // Estritamente unidade + especialidade — sem fallback para outra unidade
+  // ou outra especialidade. Se não houver médico compatível, retorna null e
+  // quem chamou deve avisar o atendente em vez de atribuir alguém errado.
+  const doctors = await prisma.user.findMany({
+    where: { role: "medico", specialty, unit },
+  });
   if (!doctors.length) return null;
 
   const { start, end } = dayRange(date);
@@ -310,6 +310,9 @@ api.get("/appointments", requireAuth, async (req, res) => {
   }
   if (req.query.doctor_id) where.doctorId = req.query.doctor_id;
   else if (req.user.role === "medico") where.doctorId = req.user.id;
+  // Atendente só pode ver a agenda da própria unidade — nunca pacientes de
+  // outro hospital/postinho.
+  if (req.user.role === "atendente" && req.user.unit) where.unit = req.user.unit;
   const appts = await prisma.appointment.findMany({
     where,
     include: { patient: true },
@@ -356,8 +359,7 @@ api.post(
     );
     if (!doctor) {
       return res.status(400).json({
-        detail:
-          "Nenhum médico disponível foi encontrado para essa consulta. Verifique se a agenda não está bloqueada.",
+        detail: `Não há médico de ${req.body.specialty} cadastrado em ${unit}. Cadastre um profissional dessa especialidade nesta unidade ou escolha outra especialidade.`,
       });
     }
 
@@ -1280,143 +1282,6 @@ api.post(
   requireRoles("atendente"),
   async (req, res) => {
     const user = req.user;
-
-    const medicineId = req.body.medicine_id || req.body.medicineId;
-    const qty = Number(req.body.quantity || 0);
-    const medicineName = (
-      req.body.medicine_name ||
-      req.body.medicineName ||
-      medicineId ||
-      ""
-    )
-      .toString()
-      .trim();
-    const dosage = (req.body.dosage || "").toString().trim();
-    const lot = (req.body.lot || "").toString().trim();
-    const notes = (req.body.notes || "").toString().trim();
-    const selectedUnitRef =
-      req.body.health_unit_id ||
-      req.body.unit_id ||
-      req.body.unitId ||
-      user.healthUnitId;
-
-    if (!medicineId || qty <= 0) {
-      return res.status(400).json({
-        detail: "Dados inválidos: medicine_id e quantity > 0 são obrigatórios",
-      });
-    }
-
-    const selectedUnit = await prisma.healthUnit.findFirst({
-      where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
-    });
-
-    if (!selectedUnit) {
-      return res.status(400).json({ detail: "Unidade de saúde inválida" });
-    }
-
-    try {
-      // 1. Executa a saída de estoque (Bloco que havia sido cortado no Git)
-      const medicineDetailsExit = JSON.stringify({
-        medicineId,
-        medicineName,
-        dosage,
-        lot,
-        notes,
-        type: "EXIT",
-      });
-
-      await prisma.$transaction(async (tx) => {
-        const result = await tx.medicineStock.updateMany({
-          where: {
-            healthUnitId: selectedUnit.id,
-            medicineId,
-            quantity: { gte: qty },
-          },
-          data: { quantity: { decrement: qty } },
-        });
-
-        if (result.count === 0) {
-          throw new Error("Estoque insuficiente para realizar a saída.");
-        }
-
-        await tx.stockTransaction.create({
-          data: {
-            healthUnitId: selectedUnit.id,
-            medicineId,
-            medicineName: medicineName || medicineId,
-            medicineDetails: medicineDetailsExit,
-            userId: user.id,
-            type: "EXIT",
-            quantity: qty,
-          },
-        });
-      });
-
-      // 2. Executa a entrada de estoque correspondente
-      const medicineDetailsEntry = JSON.stringify({
-        medicineId,
-        medicineName,
-        dosage,
-        lot,
-        notes,
-        type: "ENTRY",
-      });
-
-      const [stock] = await prisma.$transaction([
-        prisma.medicineStock.upsert({
-          where: {
-            healthUnitId_medicineId: {
-              healthUnitId: selectedUnit.id,
-              medicineId,
-            },
-          },
-          update: { quantity: { increment: qty } },
-          create: {
-            healthUnitId: selectedUnit.id,
-            medicineId,
-            quantity: qty,
-          },
-        }),
-        prisma.stockTransaction.create({
-          data: {
-            healthUnitId: selectedUnit.id,
-            medicineId,
-            medicineName: medicineName || medicineId,
-            medicineDetails,
-            userId: user.id,
-            type: "ENTRY",
-            quantity: qty,
-          },
-        }),
-      ]);
-
-      // 3. Auditoria do sistema
-      await audit(user, "stock.entry", stock.id, {
-        medicineId,
-        medicineName: medicineName || medicineId,
-        quantity: qty,
-        unitId: selectedUnit.id,
-        unitName: selectedUnit.name,
-        attendantName: user.name,
-        details: JSON.parse(medicineDetailsEntry),
-      });
-
-      return res.json({ ok: true, stock });
-    } catch (error) {
-      console.error("Erro na transação de estoque:", error);
-      return res
-        .status(500)
-        .json({ detail: error.message || "Erro interno ao processar estoque" });
-    }
-  },
-);
-
-api.post(
-  "/stock/exit",
-  requireAuth,
-  requireRoles("atendente"),
-  async (req, res) => {
-    const user = req.user;
     if (!user.healthUnitId) {
       return res
         .status(400)
@@ -1453,6 +1318,8 @@ api.post(
         type: "EXIT",
       });
       const updated = await prisma.$transaction(async (tx) => {
+        // updateMany com filtro "quantity >= qty" garante atomicidade: evita
+        // que duas saídas simultâneas derrubem o estoque abaixo de zero.
         const result = await tx.medicineStock.updateMany({
           where: {
             healthUnitId: user.healthUnitId,

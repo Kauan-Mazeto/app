@@ -74,7 +74,17 @@ export default function AtendenteDashboard() {
 
   useEffect(() => {
     load();
+    // Atualiza sozinho a cada 60s — evita a "Agenda de Hoje" ficar
+    // congelada com os dados de quando a página foi aberta.
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    // Se o usuário só ficou disponível depois do primeiro load() (comum,
+    // já que a autenticação carrega de forma assíncrona), recarrega os
+    // médicos da unidade assim que user.unit estiver pronto.
+    if (user?.unit && doctors.length === 0) load();
+  }, [user?.unit]);
   useEffect(() => {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
@@ -250,7 +260,7 @@ export default function AtendenteDashboard() {
         {/* Bloquear/Desbloquear Agenda do Médico — em destaque no topo; lista com scroll interno para não empurrar o resto da página */}
         <div className="sc-card mb-6">
           <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
-            ⚠️ Gerenciar Bloqueio de Agenda
+            Gerenciar Bloqueio de Agenda
           </h2>
           {doctors.length === 0 ? (
             <div className="text-sm text-slate-400 py-4">
@@ -291,7 +301,7 @@ export default function AtendenteDashboard() {
                       </div>
                       {hasActiveLock && activeLock && (
                         <div className="text-xs text-[#E76F51] mt-1 font-semibold">
-                          🔒 Bloqueado hoje: {activeLock.reason}
+                          Bloqueado hoje: {activeLock.reason}
                         </div>
                       )}
                       {upcomingLocks.map((lock) => (
@@ -300,7 +310,7 @@ export default function AtendenteDashboard() {
                           className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
                         >
                           <span>
-                            📅 Bloqueio agendado para{" "}
+                            Bloqueio agendado para{" "}
                             {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
                             {lock.reason}
                           </span>
@@ -337,7 +347,7 @@ export default function AtendenteDashboard() {
             </div>
           )}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
-            <strong>💡 Dica:</strong> Use este gerenciador quando o médico
+            <strong>Dica:</strong> Use este gerenciador quando o médico
             avisar de um imprevisto. A agenda será bloqueada imediatamente e os
             pacientes serão notificados.
           </div>
@@ -496,105 +506,6 @@ export default function AtendenteDashboard() {
             })()}
           </div>
         </div>
-<<<<<<< HEAD
-=======
-
-        {/* Bloquear/Desbloquear Agenda do Médico */}
-        <div className="sc-card">
-          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
-            Gerenciar Bloqueio de Agenda
-          </h2>
-          {doctors.length === 0 ? (
-            <div className="text-sm text-slate-400 py-4">
-              Nenhum médico cadastrado em sua unidade.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {doctors.map((doctor) => {
-                const todayStr = toLocalDateKey(new Date());
-                const activeLocksToday = (doctor.doctorLocks || []).filter(
-                  (lock) =>
-                    lock.active && toLocalDateKey(lock.date) === todayStr,
-                );
-                const hasActiveLock = activeLocksToday.length > 0;
-                const activeLock = activeLocksToday[0];
-                const upcomingLocks = (doctor.doctorLocks || [])
-                  .filter(
-                    (lock) =>
-                      lock.active && toLocalDateKey(lock.date) > todayStr,
-                  )
-                  .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                return (
-                  <div
-                    key={doctor.id}
-                    className={`flex justify-between items-center p-3 rounded-md border ${
-                      hasActiveLock
-                        ? "border-[#E76F51] bg-[#E76F51]/5"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold text-[#1D3557]">
-                        {doctor.name}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {doctor.specialty}
-                      </div>
-                      {hasActiveLock && activeLock && (
-                        <div className="text-xs text-[#E76F51] mt-1 font-semibold">
-                           Bloqueado hoje: {activeLock.reason}
-                        </div>
-                      )}
-                      {upcomingLocks.map((lock) => (
-                        <div
-                          key={lock.id}
-                          className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
-                        >
-                          <span>
-                            Bloqueio agendado para{" "}
-                            {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
-                            {lock.reason}
-                          </span>
-                          <button
-                            onClick={() => handleUnlockDoctor(lock.id)}
-                            disabled={lockingInProgress}
-                            className="text-[#457B9D] underline hover:no-underline disabled:opacity-50"
-                          >
-                            Cancelar bloqueio
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    {!hasActiveLock ? (
-                      <button
-                        onClick={() => handleLockDoctor(doctor)}
-                        disabled={lockingInProgress}
-                        className="px-3 py-1 bg-[#E76F51] text-white rounded text-xs font-semibold hover:bg-[#E76F51]/90 disabled:opacity-50 transition"
-                      >
-                        <Lock className="w-3 h-3 inline mr-1" /> Bloquear
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleUnlockDoctor(activeLock.id)}
-                        disabled={lockingInProgress}
-                        className="px-3 py-1 bg-[#457B9D] text-white rounded text-xs font-semibold hover:bg-[#457B9D]/90 disabled:opacity-50 transition"
-                      >
-                        <LockOpen className="w-3 h-3 inline mr-1" /> Desbloquear
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
-            <strong>Dica:</strong> Use este gerenciador quando o médico
-            avisar de um imprevisto. A agenda será bloqueada imediatamente e os
-            pacientes serão notificados.
-          </div>
-        </div>
->>>>>>> 906788726c94b21a74b7df8fe99cb088e2b40c52
       </div>
 
       {showApptForm && (
@@ -664,7 +575,11 @@ export default function AtendenteDashboard() {
                     setShowSpecialtyOptions(true);
                   }}
                   onFocus={() => {
-                    if (ap.specialty) { setSpecialtyQuery(ap.specialty); setAp({ ...ap, specialty: "" }); }
+                    // Não pré-preenche a busca com o valor já selecionado —
+                    // isso filtrava a lista para mostrar só a opção atual.
+                    // Ao focar, o campo abre limpo, mostrando todas as opções.
+                    if (ap.specialty) setAp({ ...ap, specialty: "" });
+                    setSpecialtyQuery("");
                     setShowSpecialtyOptions(true);
                   }}
                   placeholder="Buscar especialidade..."
