@@ -28,11 +28,9 @@ function formatDateTime(value) {
 
 function normalizeDetails(details) {
   if (!details) return {};
-
   if (typeof details === "string") {
     const trimmed = details.trim();
     if (!trimmed) return {};
-
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -41,23 +39,16 @@ function normalizeDetails(details) {
     } catch {
       return {};
     }
-
     return {};
   }
-
-  if (typeof details === "object" && !Array.isArray(details)) {
-    return details;
-  }
-
+  if (typeof details === "object" && !Array.isArray(details)) return details;
   return {};
 }
 
 function tryParseJson(value) {
   if (typeof value !== "string") return null;
-
   const trimmed = value.trim();
   if (!trimmed) return null;
-
   if (
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
     (trimmed.startsWith("[") && trimmed.endsWith("]"))
@@ -68,14 +59,12 @@ function tryParseJson(value) {
       return null;
     }
   }
-
   return null;
 }
 
 function getReadableSummary(log) {
   const details = normalizeDetails(log.details);
   const baseLabel = actionLabels[log.action] || "Ação registrada";
-
   switch (log.action) {
     case "stock.entry":
       return `${baseLabel} para o remédio ${details.medicineName || "selecionado"} na unidade ${details.unitName || details.unit || "selecionada"}.`;
@@ -107,28 +96,19 @@ function getReadableSummary(log) {
 function formatScheduleDay(value) {
   const numeric = Number(value);
   switch (numeric) {
-    case 0:
-      return "Domingo";
-    case 1:
-      return "Segunda";
-    case 2:
-      return "Terça";
-    case 3:
-      return "Quarta";
-    case 4:
-      return "Quinta";
-    case 5:
-      return "Sexta";
-    case 6:
-      return "Sábado";
-    default:
-      return "";
+    case 0: return "Domingo";
+    case 1: return "Segunda";
+    case 2: return "Terça";
+    case 3: return "Quarta";
+    case 4: return "Quinta";
+    case 5: return "Sexta";
+    case 6: return "Sábado";
+    default: return "";
   }
 }
 
 function formatScheduleDays(days) {
   if (!Array.isArray(days)) return "";
-
   const formatted = days
     .map((day) => {
       const value =
@@ -140,83 +120,51 @@ function formatScheduleDays(days) {
       return typeof value === "string" ? value : "";
     })
     .filter(Boolean);
-
   return formatted.join(", ");
 }
 
 function translateFieldName(key) {
-  switch (key) {
-    case "medicineId":
-      return "ID do remédio";
-    case "medicineName":
-      return "Nome do remédio";
-    case "quantity":
-      return "Quantidade";
-    case "dosage":
-      return "Dosagem";
-    case "lot":
-      return "Lote";
-    case "notes":
-      return "Observações";
-    case "healthUnitId":
-      return "ID da unidade";
-    case "unitName":
-      return "Nome da unidade";
-    case "unit":
-      return "Unidade";
-    case "patientName":
-      return "Nome do paciente";
-    case "patientId":
-      return "ID do paciente";
-    case "name":
-      return "Nome";
-    case "role":
-      return "Perfil";
-    case "status":
-      return "Situação";
-    case "filtro":
-      return "Filtro";
-    case "valor":
-      return "Valor";
-    case "days":
-      return "Dias";
-    case "createdAt":
-      return "Criado em";
-    case "updatedAt":
-      return "Atualizado em";
-    case "email":
-      return "E-mail";
-    case "phone":
-      return "Telefone";
-    case "cpf":
-      return "CPF";
-    case "crm":
-      return "CRM";
-    case "specialty":
-      return "Especialidade";
-    case "doctorName":
-      return "Nome do médico";
-    case "doctorCrm":
-      return "CRM do médico";
-    case "createdBy":
-      return "Criado por";
-    default:
-      return key;
-  }
+  const map = {
+    medicineId: "ID do remédio",
+    medicineName: "Nome do remédio",
+    quantity: "Quantidade",
+    dosage: "Dosagem",
+    lot: "Lote",
+    notes: "Observações",
+    healthUnitId: "ID da unidade",
+    unitName: "Nome da unidade",
+    unit: "Unidade",
+    patientName: "Nome do paciente",
+    patientId: "ID do paciente",
+    name: "Nome",
+    role: "Perfil",
+    status: "Situação",
+    filtro: "Filtro",
+    valor: "Valor",
+    days: "Dias",
+    createdAt: "Criado em",
+    updatedAt: "Atualizado em",
+    email: "E-mail",
+    phone: "Telefone",
+    cpf: "CPF",
+    crm: "CRM",
+    specialty: "Especialidade",
+    doctorName: "Nome do médico",
+    doctorCrm: "CRM do médico",
+    createdBy: "Criado por",
+  };
+  return map[key] || key;
 }
 
 function renderDetailValue(value) {
   if (value == null) return "—";
-
   if (typeof value === "string") {
     const parsed = tryParseJson(value);
     if (parsed !== null) return renderDetailValue(parsed);
     return value;
   }
-
   if (Array.isArray(value)) {
     if (value.length === 0) return "—";
-
     if (value.every((item) => typeof item === "object" && item !== null)) {
       return value
         .map((item) => {
@@ -226,40 +174,31 @@ function renderDetailValue(value) {
         })
         .join(" • ");
     }
-
     return value.map((item) => renderDetailValue(item)).join(" • ");
   }
-
   if (typeof value === "object") {
     if (value.day_of_week != null || value.dayOfWeek != null || value.day != null) {
       return formatScheduleDays([value]);
     }
-
     if (Object.keys(value).length === 0) return "—";
-
     return Object.entries(value)
       .map(([key, nestedValue]) => `${translateFieldName(key)}: ${renderDetailValue(nestedValue)}`)
       .join(" • ");
   }
-
   return String(value);
 }
 
 function getDetailItems(details) {
   if (!details) return [];
-
   if (typeof details === "string") {
     const parsed = tryParseJson(details);
     if (parsed !== null) return getDetailItems(parsed);
     return [["Detalhes", details]];
   }
-
   if (Array.isArray(details)) {
     return details.map((value, index) => [`Item ${index + 1}`, renderDetailValue(value)]);
   }
-
   if (typeof details !== "object") return [];
-
   const ignored = ["timestamp", "action", "target", "summary", "message", "user"];
   return Object.entries(details)
     .filter(([key]) => !ignored.includes(key))
@@ -278,7 +217,6 @@ export default function Auditoria() {
     const term = q.toLowerCase().trim();
     return logs.filter((log) => {
       if (!term) return true;
-
       return [
         log.action,
         log.user_name,
@@ -302,11 +240,9 @@ export default function Auditoria() {
       summary: getReadableSummary(log),
       details: log.details || {},
     }));
-
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json;charset=utf-8;",
     });
-
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -317,7 +253,7 @@ export default function Auditoria() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mb-6 flex justify-between items-end">
         <div>
           <div className="overline text-[#457B9D]">Logs imutável</div>
           <h1 className="font-display text-4xl font-extrabold text-[#1D3557] tracking-tight">
@@ -327,16 +263,13 @@ export default function Auditoria() {
             Acompanhe as ações principais do sistema com mensagens mais claras e os dados completos de cada registro.
           </p>
         </div>
-
-        <div className="flex flex-wrap justify-end gap-2">
-          <button
-            data-testid="export-json"
-            onClick={exportJson}
-            className="bg-white border border-slate-200 px-4 py-2 rounded-md text-sm font-semibold text-[#1D3557]"
-          >
-            <Download className="w-4 h-4 inline mr-1" /> Exportar JSON
-          </button>
-        </div>
+        <button
+          data-testid="export-json"
+          onClick={exportJson}
+          className="bg-white border border-slate-200 px-4 py-2 rounded-md text-sm font-semibold text-[#1D3557]"
+        >
+          <Download className="w-4 h-4 inline mr-1" /> Exportar JSON
+        </button>
       </div>
 
       <input
@@ -347,97 +280,110 @@ export default function Auditoria() {
       />
 
       <div className="sc-card p-0 overflow-hidden">
-        <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="text-left px-4 py-3">Data/Hora</th>
-                <th className="text-left px-4 py-3">Usuário</th>
-                <th className="text-left px-4 py-3">Ação</th>
-                <th className="text-left px-4 py-3">Resumo</th>
-              </tr>
-            </thead>
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="text-left px-4 py-3">Data/Hora</th>
+              <th className="text-left px-4 py-3">Usuário</th>
+              <th className="text-left px-4 py-3">Ação</th>
+              <th className="text-left px-4 py-3">Resumo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((log) => {
+              const items = getDetailItems(log.details);
+              const actionTone =
+                log.action === "stock.entry"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : log.action === "stock.exit"
+                  ? "bg-rose-100 text-rose-700"
+                  : "bg-slate-50 text-slate-700";
 
-            <tbody>
-              {filtered.map((log) => {
-                const items = getDetailItems(log.details);
-                const actionTone =
-                  log.action === "stock.entry"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : log.action === "stock.exit"
-                      ? "bg-rose-100 text-rose-700"
-                      : "bg-slate-50 text-slate-700";
+              return (
+                <tr key={log.id} className="border-t border-slate-100 align-top">
+                  <td className="px-4 py-3 font-mono-nums text-xs text-slate-500 whitespace-nowrap">
+                    {formatDateTime(log.timestamp)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold">{log.user_name}</div>
+                    <div className="text-xs text-slate-500 capitalize">{log.user_role}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[11px] font-semibold px-2 py-1 rounded ${actionTone}`}>
+                      {actionLabels[log.action] || log.action}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-700">
+                    <div>{getReadableSummary(log)}</div>
 
-                return (
-                  <tr key={log.id} className="border-t border-slate-100 align-top">
-                    <td className="px-4 py-3 font-mono-nums text-xs text-slate-500">
-                      {formatDateTime(log.timestamp)}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-[#1D3557]">{log.user_name}</div>
-                      <div className="text-xs text-slate-500 capitalize">{log.user_role}</div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className={`rounded px-2 py-1 text-xs font-medium ${actionTone}`}>
-                        {log.action === "stock.entry"
-                          ? "Entrada de estoque"
-                          : log.action === "stock.exit"
-                            ? "Saída de estoque"
-                            : actionLabels[log.action] || log.action}
+                    {items.length > 0 && (
+                      <div className="mt-2 text-xs text-slate-500 space-y-0.5">
+                        {items.slice(0, 3).map(([key, value]) => (
+                          <div key={key}>
+                            <span className="font-semibold">{key}:</span> {value}
+                          </div>
+                        ))}
                       </div>
-                    </td>
+                    )}
 
-                    <td className="px-4 py-3 text-xs text-slate-600">
-                      <div className="font-semibold text-[#1D3557]">
-                        {getReadableSummary(log)}
-                      </div>
+                    <details className="mt-3 group">
+                      <summary className="cursor-pointer text-xs font-semibold text-[#457B9D] hover:text-[#1D3557] select-none">
+                        Ver dados completos ▾
+                      </summary>
 
-                      {items.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {items.slice(0, 3).map(([key, value]) => (
-                            <div key={key} className="text-slate-500">
-                              <span className="font-medium text-slate-700">{key}:</span>{" "}
-                              <span className="break-words whitespace-pre-wrap">{value}</span>
+                      <div className="mt-2 space-y-3">
+                        {items.length > 0 && (
+                          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
+                              Campos legíveis
                             </div>
-                          ))}
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                              {items.map(([key, value]) => (
+                                <div key={key} className="text-xs">
+                                  <span className="font-semibold text-slate-700">{key}:</span>{" "}
+                                  <span className="text-slate-600">{value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="rounded-md border border-slate-800 bg-slate-900 p-3 overflow-x-auto">
+                          <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-2">
+                            JSON bruto da ação
+                          </div>
+                          <pre className="text-xs font-mono text-emerald-300 whitespace-pre-wrap break-all">
+{JSON.stringify(
+  {
+    id: log.id,
+    timestamp: log.timestamp,
+    user_name: log.user_name,
+    user_role: log.user_role,
+    action: log.action,
+    target: log.target,
+    details: normalizeDetails(log.details),
+  },
+  null,
+  2
+)}
+                          </pre>
                         </div>
-                      )}
-
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-[#457B9D]">
-                          Ver dados completos
-                        </summary>
-
-                        <div className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-[11px] text-slate-600">
-                          {items.length > 0 ? (
-                            items.map(([key, value]) => (
-                              <div key={key} className="flex flex-wrap gap-1 py-0.5">
-                                <span className="font-medium text-slate-700">{key}:</span>
-                                <span className="break-words whitespace-pre-wrap">{value}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-slate-400">Sem detalhes adicionais.</div>
-                          )}
-                        </div>
-                      </details>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-10 text-center text-slate-400">
-                    Nenhum registro.
+                      </div>
+                    </details>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} className="p-10 text-center text-slate-400">
+                  Nenhum registro.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
