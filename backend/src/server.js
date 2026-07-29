@@ -252,7 +252,7 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
       prescriptions_history: [],
       appointments_history: [],
     });
-  const [prescs, appointments] = await Promise.all([
+  const [prescs, appointments, exams] = await Promise.all([
     prisma.prescription.findMany({
       where: { patientId: p.id },
       orderBy: { createdAt: "desc" },
@@ -262,7 +262,30 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
       include: { doctor: true },
       orderBy: { scheduledAt: "desc" },
     }),
+    prisma.exam.findMany({
+      where: { patientId: p.id },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+  // Exam não tem um vínculo direto (FK) com Appointment no schema atual, então
+  // associamos por aproximação: exames pedidos no MESMO DIA da consulta.
+  // Não é 100% preciso (ex: duas consultas no mesmo dia, ou exame pedido fora
+  // de uma consulta), mas cobre o caso comum de "exames pedidos durante o
+  // atendimento". Para precisão total, seria necessário adicionar um campo
+  // appointmentId em Exam e setá-lo ao criar o exame a partir do Prontuário.
+  const sameDay = (d1, d2) =>
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+  const toExamSummary = (e) => ({
+    id: e.id,
+    exam: e.exam,
+    status: e.status,
+    urgent: e.urgent,
+    lab_externo: e.lab_externo,
+    created_at: e.createdAt.toISOString(),
+    delivered_at: e.deliveredAt?.toISOString(),
+  });
   res.json({
     ...base,
     prescriptions_history: prescs.map(toPrescription),
@@ -274,6 +297,9 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
       scheduled_at: a.scheduledAt.toISOString(),
       unit: a.unit,
       doctor_name: a.doctor?.name || "—",
+      exams: exams
+        .filter((e) => sameDay(e.createdAt, a.scheduledAt))
+        .map(toExamSummary),
     })),
   });
 });
@@ -1010,7 +1036,7 @@ api.patch(
   requireRoles("atendente", "admin"),
   async (req, res) => {
     const status = req.query.status;
-    if (!["pendente", "pronto", "retirado"].includes(status))
+    if (!["pendente", "laudo_pronto", "retirado"].includes(status))
       return res.status(400).json({ detail: "Status inválido" });
     const data = { status };
     if (status === "retirado") {
@@ -1149,7 +1175,7 @@ api.get(
           where: { status: "pendente" },
         }),
         exams_abandoned: await prisma.exam.count({
-          where: { status: "pronto" },
+          where: { status: "laudo_pronto" },
         }),
         total_prescriptions: await prisma.prescription.count(),
         nps,
@@ -1777,7 +1803,20 @@ const DEFAULT_SIGTAP = [
 
 const CID = loadRef("cid", DEFAULT_CID);
 const TUSS = loadRef("tuss", DEFAULT_TUSS);
-const SIGTAP = loadRef("sigtap", DEFAULT_SIGTAP);
+const SIGTAP_RAW = loadRef("sigtap", DEFAULT_SIGTAP);
+// Trava de segurança: código SIGTAP tem formato fixo XX.XX.XX.XXX-X, e o
+// grupo (2 primeiros dígitos) indica o tipo de procedimento:
+//   01 = ações de promoção/prevenção   02 = procedimentos DIAGNÓSTICOS (exames)
+//   03 = procedimentos clínicos (consultas, atendimentos, visitas)
+//   04 = procedimentos cirúrgicos      05 = transplantes
+//   06 = medicamentos                  07 = órteses/próteses
+//   08 = ações complementares
+// Aqui só queremos EXAMES, então filtramos para o grupo 02. Isso evita que
+// consultas (grupo 03) ou outros procedimentos apareçam na tela de
+// "Solicitar Exames" caso o arquivo data/sigtap.json tenha referências de
+// outros grupos misturadas.
+const SIGTAP_EXAM_CODE_RE = /^02\.\d{2}\.\d{2}\.\d{3}-\d$/;
+const SIGTAP = SIGTAP_RAW.filter((c) => SIGTAP_EXAM_CODE_RE.test(c.code));
 const search = (arr, q) =>
   !q
     ? arr

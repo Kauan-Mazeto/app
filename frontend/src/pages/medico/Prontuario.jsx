@@ -36,6 +36,12 @@ const justifications = [
   "Reação Adversa",
 ];
 
+const EXAM_STATUS_LABEL = {
+  pendente: "Pendente",
+  laudo_pronto: "Pronto p/ Retirada",
+  retirado: "Retirado",
+};
+
 export default function Prontuario() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -162,6 +168,7 @@ export default function Prontuario() {
       setPickedExams([]);
       setPrep("");
       setExamType("");
+      loadPatient();
     } catch {
       toast.error("Erro ao solicitar exames");
     }
@@ -356,22 +363,47 @@ export default function Prontuario() {
           <h2 className="font-display font-bold text-lg text-[#1D3557] mt-6 mb-3">
             Histórico de consultas
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {(p.appointments_history || []).slice(0, 8).map((appt) => (
               <div
                 key={appt.id}
-                className="text-sm border-l-2 border-slate-200 pl-3 py-1"
+                className="border-l-2 border-slate-200 pl-3 py-1"
+                data-testid={`appt-history-${appt.id}`}
               >
-                <span className="font-semibold text-slate-700">
-                  {new Date(appt.scheduled_at).toLocaleString("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </span>
-                <span className="text-slate-500">
-                  {" "}
-                  — {appt.specialty} · {appt.status} · {appt.doctor_name}
-                </span>
+                <div className="text-sm">
+                  <span className="font-semibold text-slate-700">
+                    {new Date(appt.scheduled_at).toLocaleString("pt-BR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                  <span className="text-slate-500">
+                    {" "}
+                    — {appt.specialty} · {appt.status} · {appt.doctor_name}
+                  </span>
+                </div>
+                {appt.exams && appt.exams.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {appt.exams.map((ex) => (
+                      <span
+                        key={ex.id}
+                        data-testid={`appt-exam-${ex.id}`}
+                        className="inline-flex items-center gap-1 text-[11px] bg-slate-50 border border-slate-200 rounded px-2 py-0.5 text-slate-600"
+                        title={
+                          ex.lab_externo
+                            ? `Laboratório: ${ex.lab_externo}`
+                            : "Interno"
+                        }
+                      >
+                        <FlaskConical className="w-3 h-3 text-[#457B9D]" />
+                        {ex.exam}
+                        <span className="text-slate-400">
+                          · {EXAM_STATUS_LABEL[ex.status] || ex.status}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {(p.appointments_history || []).length === 0 && (
