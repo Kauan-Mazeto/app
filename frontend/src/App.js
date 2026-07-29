@@ -95,6 +95,7 @@ function App() {
                 path="/secretario/estoque"
                 element={<StockManagement mode="secretario" />}
               />
+
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 

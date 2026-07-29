@@ -12,10 +12,9 @@ const initialFeedbacks = [
     overall_score: 4,
     doctor_score: 5,
     attendant_score: 4,
-    attestation_requested: true,
     attestation_received: false,
     reasons: ["Atestado", "Tempo de espera"],
-    comments: "Gostei do atendimento, mas ainda estou aguardando o atestado.",
+    comments: "Gostei do atendimento. O médico foi atencioso, mas o tempo de espera foi longo.",
     created_at: "2026-07-08T09:15:00"
   },
   {
@@ -28,10 +27,9 @@ const initialFeedbacks = [
     overall_score: 2,
     doctor_score: 2,
     attendant_score: 3,
-    attestation_requested: true,
     attestation_received: false,
     reasons: ["Explicação", "Atendimento"],
-    comments: "A consulta foi rápida e eu esperava uma explicação melhor sobre o atestado.",
+    comments: "A consulta foi rápida e o atendimento muito bom.",
     created_at: "2026-07-07T14:40:00"
   },
   {
@@ -44,7 +42,6 @@ const initialFeedbacks = [
     overall_score: 5,
     doctor_score: 5,
     attendant_score: 5,
-    attestation_requested: false,
     attestation_received: false,
     reasons: ["Disponibilidade"],
     comments: "Atendimento muito bom e rápido.",
@@ -89,8 +86,6 @@ export default function Feedbacks() {
     const attendant = Number(item.attendant_score || 0);
     return overall <= 2 || doctor <= 2 || attendant <= 2 || (item.attestation_requested && !item.attestation_received);
   }).length;
-
-  const pendingAttestation = filtered.filter((item) => item.attestation_requested && !item.attestation_received).length;
 
   const byProfessional = useMemo(() => {
     const acc = {};
@@ -170,14 +165,15 @@ export default function Feedbacks() {
         </div>
 
         <div className="sc-card">
+          <div className="text-sm text-slate-500">Avaliações positivas</div>
+          <div className="text-2xl font-bold text-emerald-600">{filtered.length - negativeCount}</div>
+        </div>
+
+        <div className="sc-card">
           <div className="text-sm text-slate-500">Avaliações negativas</div>
           <div className="text-2xl font-bold text-rose-600">{negativeCount}</div>
         </div>
 
-        <div className="sc-card">
-          <div className="text-sm text-slate-500">Atestados pendentes</div>
-          <div className="text-2xl font-bold text-amber-600">{pendingAttestation}</div>
-        </div>
       </div>
 
       <input
