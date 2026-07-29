@@ -65,12 +65,10 @@ export default function Prontuario() {
   const loadPatient = async () => {
     try {
       const { data } = await api.get(`/patients/${id}`);
+      console.log("patient data", data);
       setP(data);
-      const pr = await api.get(`/prescriptions?patient_id=${id}`);
-      setPrescs(pr.data);
     } catch (e) {
       toast.error("Erro ao carregar paciente");
-      setPrescs([]);
     }
   };
   const loadRefs = async () => {
@@ -221,9 +219,6 @@ export default function Prontuario() {
             <h1 className="font-display text-3xl font-extrabold text-[#1D3557] mt-1">
               {p.name}
             </h1>
-            <div className="text-sm text-slate-500 mt-1">
-              CPF {p.cpf} · Nascimento {p.birth_date} · {p.phone}
-            </div>
             {p.blocked_online && (
               <div className="mt-3 inline-flex items-center gap-2 bg-[#E76F51]/10 text-[#E76F51] text-xs font-semibold px-2 py-1 rounded">
                 <ShieldAlert className="w-3 h-3" /> Bloqueado para agendamento
@@ -232,20 +227,81 @@ export default function Prontuario() {
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              data-testid="new-prescription-btn"
-              onClick={() => setShowForm(true)}
-              className="bg-[#1D3557] text-white px-4 py-2 rounded-md font-semibold text-sm"
-            >
-              <Pill className="w-4 h-4 inline mr-1" /> Nova Receita
-            </button>
-            <button
-              data-testid="request-exam-btn"
-              onClick={() => setShowExam(true)}
-              className="bg-white border border-slate-200 text-[#1D3557] px-4 py-2 rounded-md font-semibold text-sm"
-            >
-              <FlaskConical className="w-4 h-4 inline mr-1" /> Solicitar Exames
-            </button>
+              <button
+                data-testid="new-prescription-btn"
+                onClick={() => setShowForm(true)}
+                className="bg-[#1D3557] text-white px-4 py-2 rounded-md font-semibold text-sm"
+              >
+                <Pill className="w-4 h-4 inline mr-1" /> Nova Receita
+              </button>
+              <button
+                data-testid="request-exam-btn"
+                onClick={() => setShowExam(true)}
+                className="bg-white border border-slate-200 text-[#1D3557] px-4 py-2 rounded-md font-semibold text-sm"
+              >
+                <FlaskConical className="w-4 h-4 inline mr-1" /> Solicitar Exames
+              </button>
+            </div>
+        </div>
+      </div>
+
+      <div className="sc-card mb-6">
+        <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
+          Dados cadastrais
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+          <div>
+            <div className="font-semibold text-slate-600">Sexo</div>
+            <div>{p.sex || "—"}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-600">Cartão SUS</div>
+            <div>{p.sus_card || "—"}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-600">Mãe</div>
+            <div>{p.mother_name || "—"}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-600">Pai</div>
+            <div>{p.father_name || "—"}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-600">CEP</div>
+            <div>{p.cep || "—"}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-600">Cidade / UF</div>
+            <div>{p.city_state || "—"}</div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Endereço residencial</div>
+            <div>{p.address || "—"}</div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Unidade de saúde mais próxima</div>
+            <div>{p.nearest_unit || "—"}</div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Contato de emergência</div>
+            <div>
+              {p.emergency_contact_name || "—"}
+              {p.emergency_contact_phone
+                ? ` · ${p.emergency_contact_phone}`
+                : ""}
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Uso de substâncias</div>
+            <div>{p.substance_use || "—"}</div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Alergias</div>
+            <div>{p.allergies || "—"}</div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="font-semibold text-slate-600">Doenças crônicas</div>
+            <div>{p.chronic_conditions || "—"}</div>
           </div>
         </div>
       </div>

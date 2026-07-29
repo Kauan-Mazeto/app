@@ -39,6 +39,18 @@ const toPatient = (p) => ({
   birth_date: p.birthDate,
   phone: p.phone,
   address: p.address,
+  sex: p.sex,
+  mother_name: p.motherName,
+  father_name: p.fatherName,
+  sus_card: p.susCard,
+  cep: p.cep,
+  city_state: p.cityState,
+  nearest_unit: p.nearestUnit,
+  emergency_contact_name: p.emergencyContactName,
+  emergency_contact_phone: p.emergencyContactPhone,
+  substance_use: p.substanceUse,
+  allergies: p.allergies,
+  chronic_conditions: p.chronicConditions,
   lgpd_accepted: p.lgpdAccepted,
   missed_count: p.missedCount,
   blocked_online: p.blockedOnline,
@@ -277,11 +289,7 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
     })),
   });
 });
-api.post(
-  "/patients",
-  requireAuth,
-  requireRoles("atendente", "admin", "medico"),
-  async (req, res) => {
+api.post("/patients", requireAuth, requireRoles("atendente", "admin"), async (req, res) => {
     try {
       const p = await prisma.patient.create({
         data: {
@@ -290,6 +298,18 @@ api.post(
           birthDate: req.body.birth_date,
           phone: req.body.phone,
           address: req.body.address,
+          sex: req.body.sex,
+          motherName: req.body.mother_name,
+          fatherName: req.body.father_name,
+          susCard: req.body.sus_card,
+          cep: req.body.cep,
+          cityState: req.body.city_state,
+          nearestUnit: req.body.nearest_unit,
+          emergencyContactName: req.body.emergency_contact_name,
+          emergencyContactPhone: req.body.emergency_contact_phone,
+          substanceUse: req.body.substance_use,
+          allergies: req.body.allergies,
+          chronicConditions: req.body.chronic_conditions,
           lgpdAccepted: !!req.body.lgpd_accepted,
         },
       });

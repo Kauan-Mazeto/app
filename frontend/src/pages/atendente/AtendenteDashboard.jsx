@@ -51,8 +51,24 @@ export default function AtendenteDashboard() {
     birth_date: "2000-01-01",
     phone: "",
     address: "",
+    sex: "",
+    mother_name: "",
+    father_name: "",
+    sus_card: "",
+    cep: "",
+    city_state: "",
+    nearest_unit: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+    substance_use: "",
+    allergies: "",
+    chronic_conditions: "",
     lgpd_accepted: true,
   });
+
+  const updateNp = (field, value) =>
+    setNp((prev) => ({ ...prev, [field]: value }));
+
   const [filterName, setFilterName] = useState("");
   const [filterStartTime, setFilterStartTime] = useState("");
   const [filterEndTime, setFilterEndTime] = useState("");
@@ -134,7 +150,6 @@ export default function AtendenteDashboard() {
       toast.error(e?.response?.data?.detail || "Erro ao agendar");
     }
   };
-
   const createPatient = async () => {
     try {
       await api.post("/patients", np);
@@ -147,6 +162,18 @@ export default function AtendenteDashboard() {
         birth_date: "2000-01-01",
         phone: "",
         address: "",
+        sex: "",
+        mother_name: "",
+        father_name: "",
+        sus_card: "",
+        cep: "",
+        city_state: "",
+        nearest_unit: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        substance_use: "",
+        allergies: "",
+        chronic_conditions: "",
         lgpd_accepted: true,
       });
     } catch (e) {
@@ -209,6 +236,8 @@ export default function AtendenteDashboard() {
       setLockingInProgress(false);
     }
   };
+
+
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -663,41 +692,148 @@ export default function AtendenteDashboard() {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Nome completo">
               <input
-                data-testid="np-name"
                 value={np.name}
-                onChange={(e) => setNp({ ...np, name: e.target.value })}
+                onChange={(e) => updateNp("name", e.target.value)}
                 className="inp"
               />
+            </Field>
+            <Field label="Sexo">
+              <select
+                value={np.sex}
+                onChange={(e) => updateNp("sex", e.target.value)}
+                className="inp"
+              >
+                <option value="">Selecione</option>
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+              </select>
             </Field>
             <Field label="CPF">
               <input
                 data-testid="np-cpf"
                 value={np.cpf}
-                onChange={(e) => setNp({ ...np, cpf: e.target.value })}
+                onChange={(e) => updateNp("cpf", e.target.value)}
                 className="inp"
+                placeholder="Somente números (ex. 12345678910)"
+              />
+            </Field>
+            <Field label="Cartão Nacional de Saúde (SUS)">
+              <input
+                value={np.sus_card}
+                onChange={(e) => updateNp("sus_card", e.target.value)}
+                className="inp"
+                placeholder="Somente números (ex. 123456789012345)"
               />
             </Field>
             <Field label="Nascimento">
               <input
                 type="date"
                 value={np.birth_date}
-                onChange={(e) => setNp({ ...np, birth_date: e.target.value })}
+                onChange={(e) => updateNp("birth_date", e.target.value)}
                 className="inp"
               />
             </Field>
-            <Field label="Telefone">
+            <Field label="Telefone/Celular">
               <input
                 value={np.phone}
-                onChange={(e) => setNp({ ...np, phone: e.target.value })}
+                onChange={(e) => updateNp("phone", e.target.value)}
                 className="inp"
+                placeholder="(99) 99999-9999"
+              />
+            </Field>
+            <Field label="Nome da mãe">
+              <input
+                value={np.mother_name}
+                onChange={(e) => updateNp("mother_name", e.target.value)}
+                className="inp"
+              />
+            </Field>
+            <Field label="Nome do pai">
+              <input
+                value={np.father_name}
+                onChange={(e) => updateNp("father_name", e.target.value)}
+                className="inp"
+              />
+            </Field>
+            <Field label="CEP">
+              <input
+                value={np.cep}
+                onChange={(e) => updateNp("cep", e.target.value)}
+                className="inp"
+                placeholder="Somente números (ex. 12345678)"
+              />
+            </Field>
+            <Field label="Endereço residencial">
+              <input
+                value={np.address}
+                onChange={(e) => updateNp("address", e.target.value)}
+                className="inp"
+                placeholder="Rua, Nº, Bairro"
+              />
+            </Field>
+            <Field label="Cidade/UF">
+              <input
+                value={np.city_state}
+                onChange={(e) => updateNp("city_state", e.target.value)}
+                className="inp"
+                placeholder="Cidade / UF"
+              />
+            </Field>
+            <Field label="Unidade de saúde mais próxima">
+              <input
+                value={np.nearest_unit}
+                onChange={(e) => updateNp("nearest_unit", e.target.value)}
+                className="inp"
+                placeholder="Preencher com a unidade mais próxima"
+              />
+            </Field>
+            <Field label="Nome do contato de emergência">
+              <input
+                value={np.emergency_contact_name}
+                onChange={(e) =>
+                  updateNp("emergency_contact_name", e.target.value)
+                }
+                className="inp"
+              />
+            </Field>
+            <Field label="Telefone do contato de emergência">
+              <input
+                value={np.emergency_contact_phone}
+                onChange={(e) =>
+                  updateNp("emergency_contact_phone", e.target.value)
+                }
+                className="inp"
+                placeholder="(99) 99999-9999"
               />
             </Field>
             <div className="col-span-2">
-              <Field label="Endereço">
-                <input
-                  value={np.address}
-                  onChange={(e) => setNp({ ...np, address: e.target.value })}
-                  className="inp"
+              <Field label="Uso de substâncias">
+                <textarea
+                  value={np.substance_use}
+                  onChange={(e) =>
+                    updateNp("substance_use", e.target.value)
+                  }
+                  className="inp h-24 resize-none"
+                />
+              </Field>
+            </div>
+            <div className="col-span-2">
+              <Field label="Alergias">
+                <textarea
+                  value={np.allergies}
+                  onChange={(e) => updateNp("allergies", e.target.value)}
+                  className="inp h-24 resize-none"
+                />
+              </Field>
+            </div>
+            <div className="col-span-2">
+              <Field label="Doenças crônicas">
+                <textarea
+                  value={np.chronic_conditions}
+                  onChange={(e) =>
+                    updateNp("chronic_conditions", e.target.value)
+                  }
+                  className="inp h-24 resize-none"
                 />
               </Field>
             </div>
@@ -706,7 +842,7 @@ export default function AtendenteDashboard() {
                 type="checkbox"
                 checked={np.lgpd_accepted}
                 onChange={(e) =>
-                  setNp({ ...np, lgpd_accepted: e.target.checked })
+                  updateNp("lgpd_accepted", e.target.checked)
                 }
               />
               Paciente aceitou os Termos de Uso (LGPD)
@@ -748,6 +884,24 @@ export default function AtendenteDashboard() {
     </div>
   );
 }
+function Modal({ title, children, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-display font-extrabold text-xl text-[#1D3557] mb-4">
+          {title}
+        </h3>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function Stat({ label, value, icon: Icon, accent = "#1D3557" }) {
   return (
@@ -770,25 +924,6 @@ function Field({ label, children }) {
         {label}
       </label>
       {children}
-    </div>
-  );
-}
-
-function Modal({ title, children, onClose }) {
-  return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="font-display font-extrabold text-xl text-[#1D3557] mb-4">
-          {title}
-        </h3>
-        {children}
-      </div>
     </div>
   );
 }

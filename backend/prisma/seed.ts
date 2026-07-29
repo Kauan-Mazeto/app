@@ -29,7 +29,7 @@ async function main() {
   // Unidade
   const spm = await prisma.healthUnit.create({
     data: {
-      name: 'spm Centro'
+      name: 'UBS Centro'
     }
   })
 

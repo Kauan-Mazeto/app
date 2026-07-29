@@ -43,6 +43,20 @@ model Patient {
   blockedOnline Boolean        @default(false)
   active        Boolean        @default(true)
   createdAt     DateTime       @default(now())
+
+  sex                    String?
+  motherName             String?
+  fatherName             String?
+  susCard                String?
+  cep                    String?
+  cityState              String?
+  nearestUnit            String?
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  substanceUse           String?
+  allergies              String?
+  chronicConditions      String?
+
   appointments  Appointment[]
   prescriptions Prescription[]
   exams         Exam[]
