@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/seed.js",
-    "fetch-refs": "node scripts/fetch-refs.js"
+    "fetch-refs": "node scripts/fetch-refs.js",
+    "test:smoke": "node tests/smoke-tests.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

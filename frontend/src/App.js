@@ -100,18 +100,14 @@ function App() {
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 
-            {/* Configuração de vagas online x presencial: acessível por Atendente e Secretário */}
+            {/* Configuração de vagas online x presencial: acessível apenas pelo Secretário */}
             <Route
               element={
-                <Protected roles={["atendente", "secretario"]}>
+                <Protected roles={["secretario"]}>
                   <AppLayout />
                 </Protected>
               }
             >
-              <Route
-                path="/atendente/config-vagas"
-                element={<ConfiguracaoVagas />}
-              />
               <Route
                 path="/secretario/config-vagas"
                 element={<ConfiguracaoVagas />}

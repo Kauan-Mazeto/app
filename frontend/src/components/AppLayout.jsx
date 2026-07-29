@@ -29,11 +29,6 @@ const navByRole = {
       end: true,
     },
     { to: "/atendente/vagas", label: "Vagas Ociosas", icon: Bell },
-    {
-      to: "/atendente/config-vagas",
-      label: "Vagas Online x Presencial",
-      icon: Calendar,
-    },
     { to: "/atendente/exames", label: "Entrega de Exames", icon: Package },
     { to: "/atendente/refs", label: "Buscador Técnico", icon: Search },
     {

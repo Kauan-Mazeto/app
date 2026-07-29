@@ -669,6 +669,9 @@ api.get(
     }
 
     const queryDate = parseLocalDate(date);
+    const dayStart = new Date(queryDate);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
     // Buscar todos os médicos
     const doctors = await prisma.user.findMany({
@@ -686,10 +689,6 @@ api.get(
             active: true,
           },
         });
-
-        const dayStart = new Date(queryDate);
-        const dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayEnd.getDate() + 1);
 
         const allAppointments = await prisma.appointment.count({
           where: {
@@ -1282,7 +1281,13 @@ api.post(
   requireRoles("atendente"),
   async (req, res) => {
     const user = req.user;
-    if (!user.healthUnitId) {
+    const selectedUnitRef =
+      req.body.health_unit_id ||
+      req.body.unit_id ||
+      req.body.unitId ||
+      user.healthUnitId;
+
+    if (!selectedUnitRef) {
       return res
         .status(400)
         .json({ detail: "Atendente sem unidade de saúde associada" });
@@ -1308,6 +1313,13 @@ api.post(
       });
     }
 
+    const selectedUnit = await prisma.healthUnit.findFirst({
+      where: { OR: [{ id: selectedUnitRef }, { name: selectedUnitRef }] },
+    });
+    if (!selectedUnit) {
+      return res.status(400).json({ detail: "Unidade de saúde inválida" });
+    }
+
     try {
       const medicineDetails = JSON.stringify({
         medicineId,
@@ -1322,7 +1334,7 @@ api.post(
         // que duas saídas simultâneas derrubem o estoque abaixo de zero.
         const result = await tx.medicineStock.updateMany({
           where: {
-            healthUnitId: user.healthUnitId,
+            healthUnitId: selectedUnit.id,
             medicineId,
             quantity: { gte: qty },
           },
@@ -1335,7 +1347,7 @@ api.post(
         }
         await tx.stockTransaction.create({
           data: {
-            healthUnitId: user.healthUnitId,
+            healthUnitId: selectedUnit.id,
             medicineId,
             medicineName: medicineName || medicineId,
             medicineDetails,
@@ -1347,7 +1359,7 @@ api.post(
         return tx.medicineStock.findUnique({
           where: {
             healthUnitId_medicineId: {
-              healthUnitId: user.healthUnitId,
+              healthUnitId: selectedUnit.id,
               medicineId,
             },
           },
@@ -1358,7 +1370,8 @@ api.post(
         medicineId,
         medicineName: medicineName || medicineId,
         quantity: qty,
-        unitId: user.healthUnitId,
+        unitId: selectedUnit.id,
+        unitName: selectedUnit.name,
         details: JSON.parse(medicineDetails),
       });
       res.json({ ok: true, stock: updated });
