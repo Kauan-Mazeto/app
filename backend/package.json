@@ -8,7 +8,8 @@
     "seed": "node src/seed.js",
     "db:seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
-    "fetch-refs": "node scripts/fetch-refs.js"
+    "fetch-refs": "node scripts/fetch-refs.js",
+    "test:smoke": "node tests/smoke-tests.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

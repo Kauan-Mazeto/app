@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-07-29T03:19:15.843Z",
+  "results": [
+    {
+      "name": "GET /api/refs/cid",
+      "ok": true,
+      "detail": "referências carregadas"
+    },
+    {
+      "name": "POST /api/auth/login com credenciais válidas",
+      "ok": true,
+      "detail": "login admin ok"
+    },
+    {
+      "name": "GET /api/auth/me com token",
+      "ok": true,
+      "detail": "perfil retornado"
+    },
+    {
+      "name": "GET /api/users como admin",
+      "ok": true,
+      "detail": "usuários listados (17)"
+    },
+    {
+      "name": "POST /api/users criar novo usuário",
+      "ok": true,
+      "detail": "usuário criado (qa-1785295147165@saudeconecta.gov.br)"
+    },
+    {
+      "name": "POST /api/patients criar paciente",
+      "ok": true,
+      "detail": "paciente criado"
+    },
+    {
+      "name": "GET /api/patients buscar paciente",
+      "ok": true,
+      "detail": "paciente encontrado"
+    },
+    {
+      "name": "POST /api/appointments criar consulta",
+      "ok": true,
+      "detail": "consulta criada"
+    },
+    {
+      "name": "PATCH /api/appointments/:id atualizar status",
+      "ok": true,
+      "detail": "status atualizado"
+    },
+    {
+      "name": "GET /api/queue/today",
+      "ok": true,
+      "detail": "fila retornada"
+    },
+    {
+      "name": "POST /api/secretario/agenda/lock/unlock/status",
+      "ok": true,
+      "detail": "bloqueio e desbloqueio OK"
+    },
+    {
+      "name": "GET /api/health-units e POST /api/health-units",
+      "ok": true,
+      "detail": "unidades listadas e criadas"
+    },
+    {
+      "name": "GET/PUT /api/scheduling-config",
+      "ok": true,
+      "detail": "configuração salva"
+    },
+    {
+      "name": "GET /api/scheduling-config/availability",
+      "ok": true,
+      "detail": "disponibilidade consultada"
+    },
+    {
+      "name": "POST /api/prescriptions criar receita",
+      "ok": true,
+      "detail": "receita criada"
+    },
+    {
+      "name": "POST /api/prescriptions/:id/adherence",
+      "ok": true,
+      "detail": "adesão registrada"
+    },
+    {
+      "name": "GET /api/exams e POST /api/exams",
+      "ok": true,
+      "detail": "exame criado"
+    },
+    {
+      "name": "PATCH /api/exams/:id/status",
+      "ok": true,
+      "detail": "status do exame atualizado"
+    },
+    {
+      "name": "GET /api/waiting-list e /api/vacancies/active",
+      "ok": true,
+      "detail": "listas retornadas"
+    },
+    {
+      "name": "GET /api/dashboard/secretario",
+      "ok": true,
+      "detail": "dashboard retornado"
+    },
+    {
+      "name": "POST /api/stock/entry e /api/stock/exit",
+      "ok": false,
+      "detail": "exit=400"
+    },
+    {
+      "name": "GET /api/stock/transactions e /api/stock/summary",
+      "ok": true,
+      "detail": "movimentações e resumo retornados"
+    },
+    {
+      "name": "GET /api/secretario/dashboard-stock",
+      "ok": true,
+      "detail": "dashboard de estoque retornado"
+    },
+    {
+      "name": "GET /api/audit-logs",
+      "ok": true,
+      "detail": "logs de auditoria retornados"
+    },
+    {
+      "name": "GET /api/ai/opcoes",
+      "ok": true,
+      "detail": "opções de IA consultadas"
+    }
+  ]
+}
