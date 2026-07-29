@@ -118,7 +118,7 @@ export default function SecretarioDashboard() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      {/* <div className="mb-6">
         <Card title="Previsão de demanda de medicamentos com base no consumo mensal">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={d.med_demand} layout="vertical" margin={{ left: 60 }}>
@@ -130,19 +130,8 @@ export default function SecretarioDashboard() {
             </BarChart>
           </ResponsiveContainer>
         </Card>
+      </div>*/}
 
-        <Card title="Mapa de gargalos · Faltas por especialidade">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={d.by_specialty}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="specialty" stroke="#64748B" style={{ fontSize: 11 }} />
-              <YAxis stroke="#64748B" style={{ fontSize: 11 }} />
-              <Tooltip formatter={(v) => `${v}%`} />
-              <Bar dataKey="absenteeism" fill="#E76F51" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
 
       <Card title="Ranking de unidades de saúde por eficiência no atendimento">
         <table className="w-full text-sm">
