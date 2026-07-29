@@ -15,7 +15,6 @@ import SecretarioDashboard from "@/pages/secretario/SecretarioDashboard";
 import Auditoria from "@/pages/secretario/Auditoria";
 import ConfiguracaoVagas from "@/pages/atendente/ConfiguracaoVagas";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
-import PrevisaoIa from "@/pages/secretario/PrevisaoIa";
 import Feedbacks from "@/pages/secretario/Feedbacks";
 import "./App.css";
 
@@ -96,7 +95,6 @@ function App() {
                 path="/secretario/estoque"
                 element={<StockManagement mode="secretario" />}
               />
-              <Route path="/secretario/ia" element={<PrevisaoIa />} />
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 

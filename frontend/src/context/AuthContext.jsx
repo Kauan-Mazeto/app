@@ -3,8 +3,10 @@ import { api, formatError } from "@/lib/api";
 
 const AuthCtx = createContext(null);
 
+const normalizeEmail = (value) => String(value ?? "").trim().toLowerCase();
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // null=loading, false=guest, obj=logged
+  const [user, setUser] = useState(null);
   const [error, setError] = useState("");
 
   const fetchMe = async () => {
@@ -31,13 +33,26 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     setError("");
+    const normalizedEmail = normalizeEmail(email);
+
     try {
-      const { data } = await api.post("/auth/login", { email, password });
-      if (data.token) localStorage.setItem("sc_token", data.token);
+      const { data } = await api.post("/auth/login", {
+        email: normalizedEmail,
+        password,
+      });
+
+      if (data?.token) {
+        localStorage.setItem("sc_token", data.token);
+      }
+
       setUser(data);
       return data;
     } catch (e) {
-      const msg = formatError(e.response?.data?.detail) || e.message;
+      const msg =
+        formatError(e.response?.data?.detail || e.response?.data?.message) ||
+        e.message ||
+        "Erro ao fazer login";
+
       setError(msg);
       throw new Error(msg);
     }

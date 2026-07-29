@@ -96,11 +96,6 @@ export default function Landing() {
             </a>
           </div>
 
-          {/*<div className="mt-8 text-xs text-slate-500 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#1E4620]" />
-            Em conformidade com a LGPD · Integração Gov.br para segurança dos dados
-          </div>
-          */}
         </div>
 
         <div className="relative group  ">

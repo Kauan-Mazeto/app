@@ -131,7 +131,7 @@ export default function SecretarioDashboard() {
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Mapa de gargalos · Absenteísmo por especialidade">
+        <Card title="Mapa de gargalos · Faltas por especialidade">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={d.by_specialty}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />

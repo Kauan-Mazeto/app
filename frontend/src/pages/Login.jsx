@@ -11,10 +11,10 @@ const roleRedirect = {
 };
 
 const demoAccounts = [
-  { role: "Médico", email: "medico@saudeconecta.gov.br" },
-  { role: "Atendente", email: "atendente@saudeconecta.gov.br" },
-  { role: "Secretário", email: "secretario@saudeconecta.gov.br" },
-  { role: "Admin", email: "admin@saudeconecta.gov.br" },
+  { role: "Médico", email: "medico@spm.gov.br" },
+  { role: "Atendente", email: "atendente@spm.gov.br" },
+  { role: "Secretário", email: "secretario@spm.gov.br" },
+  { role: "Admin", email: "admin@spm.gov.br" },
 ];
 
 export default function Login() {
@@ -60,12 +60,8 @@ export default function Login() {
             Rede Municipal · SUS
           </div>
           <h2 className="font-display font-extrabold text-4xl leading-tight tracking-tight max-w-md">
-            Acompanhamento clínico com validade jurídica e transparência.
+            Gestão inteligente da saúde pública em um só lugar.
           </h2>
-          <p className="text-white/70 mt-6 max-w-sm">
-            Painel de fila unificada, receitas digitais Gov.br e indicadores de
-            gestão em tempo real.
-          </p>
         </div>
 
         <div className="text-xs text-white/50">
@@ -97,6 +93,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full mt-1 px-3 py-2.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1D3557]"
+                placeholder="email@spm.gov.br"
               />
             </div>
 
@@ -111,6 +108,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full mt-1 px-3 py-2.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1D3557]"
+                placeholder="********"
               />
             </div>
 

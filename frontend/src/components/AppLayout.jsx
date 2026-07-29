@@ -52,7 +52,6 @@ const navByRole = {
       label: "Vagas Online x Presencial",
       icon: Calendar,
     },
-    { to: "/secretario/ia", label: "Previsão por IA", icon: Brain },
   ],
   admin: [{ to: "/admin", label: "Profissionais", icon: UserCog, end: true }],
 };
