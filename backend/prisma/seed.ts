@@ -39,7 +39,7 @@ async function main() {
       passwordHash: senhaPadrao,
       name: 'Ana Souza',
       role: 'secretario',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -52,7 +52,7 @@ async function main() {
       role: 'medico',
       crm: 'CRM-PR 12345',
       specialty: 'Clínica Geral',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -65,7 +65,7 @@ async function main() {
       role: 'medico',
       crm: 'CRM-PR 67890',
       specialty: 'Pediatria',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -78,7 +78,7 @@ async function main() {
       role: 'medico',
       crm: 'CRM-PR 11223',
       specialty: 'Cardiologia',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -91,7 +91,7 @@ async function main() {
       role: 'medico',
       crm: 'CRM-PR 44556',
       specialty: 'Ginecologia',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -102,7 +102,7 @@ async function main() {
       passwordHash: senhaPadrao,
       name: 'Marcos Lima',
       role: 'atendente',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -113,7 +113,7 @@ async function main() {
       passwordHash: senhaAdmin,
       name: 'Admin Sistema',
       role: 'admin',
-      unit: 'spm Centro',
+      unit: 'UBS Centro',
       healthUnitId: spm.id
     }
   })
@@ -825,7 +825,7 @@ async function main() {
         patientId: pacientes[3].id,
         patientName: pacientes[3].name,
         specialty: 'Dermatologia',
-        unit: 'spm Centro',
+        unit: 'UBS Centro',
         notifiedAt: new Date(),
         deadline: new Date(Date.now() + 1000 * 60 * 60 * 24),
         status: 'waiting_response'
@@ -834,7 +834,7 @@ async function main() {
         patientId: pacientes[14].id,
         patientName: pacientes[14].name,
         specialty: 'Cardiologia',
-        unit: 'spm Centro',
+        unit: 'UBS Centro',
         notifiedAt: new Date(),
         deadline: new Date(Date.now() + 1000 * 60 * 60 * 12),
         status: 'waiting_response'
@@ -843,7 +843,7 @@ async function main() {
         patientId: pacientes[16].id,
         patientName: pacientes[16].name,
         specialty: 'Ortopedia',
-        unit: 'spm Centro',
+        unit: 'UBS Centro',
         notifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
         deadline: new Date(Date.now() - 1000 * 60 * 60 * 2),
         status: 'expired'
@@ -854,11 +854,11 @@ async function main() {
   // Configuração agenda online
   await prisma.onlineSlotConfig.createMany({
     data: [
-      { unit: 'spm Centro', dayOfWeek: 1, onlinePercentage: 50, maxOnlineSlots: 8 },
-      { unit: 'spm Centro', dayOfWeek: 2, onlinePercentage: 50, maxOnlineSlots: 8 },
-      { unit: 'spm Centro', dayOfWeek: 3, onlinePercentage: 60, maxOnlineSlots: 10 },
-      { unit: 'spm Centro', dayOfWeek: 4, onlinePercentage: 60, maxOnlineSlots: 10 },
-      { unit: 'spm Centro', dayOfWeek: 5, onlinePercentage: 50, maxOnlineSlots: 8 }
+      { unit: 'UBS Centro', dayOfWeek: 1, onlinePercentage: 50, maxOnlineSlots: 8 },
+      { unit: 'UBS Centro', dayOfWeek: 2, onlinePercentage: 50, maxOnlineSlots: 8 },
+      { unit: 'UBS Centro', dayOfWeek: 3, onlinePercentage: 60, maxOnlineSlots: 10 },
+      { unit: 'UBS Centro', dayOfWeek: 4, onlinePercentage: 60, maxOnlineSlots: 10 },
+      { unit: 'UBS Centro', dayOfWeek: 5, onlinePercentage: 50, maxOnlineSlots: 8 }
     ]
   })
 

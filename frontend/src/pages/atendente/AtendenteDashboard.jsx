@@ -64,12 +64,18 @@ export default function AtendenteDashboard() {
     allergies: "",
     chronic_conditions: "",
     lgpd_accepted: true,
+    responsible_allowed: false,
+    responsible_name: "",
+    responsible_cpf: "",
+    responsible_phone: "",
+    responsible_relationship_level: "",
   });
 
   const updateNp = (field, value) =>
     setNp((prev) => ({ ...prev, [field]: value }));
 
   const [filterName, setFilterName] = useState("");
+  const [editingPatient, setEditingPatient] = useState(null);
   const [filterStartTime, setFilterStartTime] = useState("");
   const [filterEndTime, setFilterEndTime] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -175,9 +181,115 @@ export default function AtendenteDashboard() {
         allergies: "",
         chronic_conditions: "",
         lgpd_accepted: true,
+        responsible_allowed: false,
+        responsible_name: "",
+        responsible_cpf: "",
+        responsible_phone: "",
+        responsible_relationship_level: "",
       });
     } catch (e) {
       toast.error("Erro ao cadastrar");
+    }
+  };
+
+  const openPatientForm = (patient = null) => {
+    if (patient) {
+      setEditingPatient(patient);
+      setNp({
+        name: patient.name || "",
+        cpf: patient.cpf || "",
+        birth_date: patient.birth_date || "2000-01-01",
+        phone: patient.phone || "",
+        address: patient.address || "",
+        sex: patient.sex || "",
+        mother_name: patient.mother_name || "",
+        father_name: patient.father_name || "",
+        sus_card: patient.sus_card || "",
+        cep: patient.cep || "",
+        city_state: patient.city_state || "",
+        nearest_unit: patient.nearest_unit || "",
+        emergency_contact_name: patient.emergency_contact_name || "",
+        emergency_contact_phone: patient.emergency_contact_phone || "",
+        substance_use: patient.substance_use || "",
+        allergies: patient.allergies || "",
+        chronic_conditions: patient.chronic_conditions || "",
+        lgpd_accepted: patient.lgpd_accepted ?? true,
+        responsible_allowed: patient.responsible_allowed ?? false,
+        responsible_name: patient.responsible_name || "",
+        responsible_cpf: patient.responsible_cpf || "",
+        responsible_phone: patient.responsible_phone || "",
+        responsible_relationship_level: patient.responsible_relationship_level || "",
+      });
+    } else {
+      setEditingPatient(null);
+      setNp({
+        name: "",
+        cpf: "",
+        birth_date: "2000-01-01",
+        phone: "",
+        address: "",
+        sex: "",
+        mother_name: "",
+        father_name: "",
+        sus_card: "",
+        cep: "",
+        city_state: "",
+        nearest_unit: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        substance_use: "",
+        allergies: "",
+        chronic_conditions: "",
+        lgpd_accepted: true,
+        responsible_allowed: false,
+        responsible_name: "",
+        responsible_cpf: "",
+        responsible_phone: "",
+        responsible_relationship_level: "",
+      });
+    }
+    setShowPatientForm(true);
+  };
+
+  const savePatient = async () => {
+    try {
+      if (editingPatient) {
+        await api.put(`/patients/${editingPatient.id}`, np);
+        toast.success("Dados do paciente atualizados");
+      } else {
+        await api.post("/patients", np);
+        toast.success("Paciente cadastrado");
+      }
+      setShowPatientForm(false);
+      setEditingPatient(null);
+      load();
+      setNp({
+        name: "",
+        cpf: "",
+        birth_date: "2000-01-01",
+        phone: "",
+        address: "",
+        sex: "",
+        mother_name: "",
+        father_name: "",
+        sus_card: "",
+        cep: "",
+        city_state: "",
+        nearest_unit: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        substance_use: "",
+        allergies: "",
+        chronic_conditions: "",
+        lgpd_accepted: true,
+        responsible_allowed: false,
+        responsible_name: "",
+        responsible_cpf: "",
+        responsible_phone: "",
+        responsible_relationship_level: "",
+      });
+    } catch (e) {
+      toast.error("Erro ao salvar paciente");
     }
   };
 
@@ -258,7 +370,7 @@ export default function AtendenteDashboard() {
           </button>
           <button
             data-testid="new-patient-btn"
-            onClick={() => setShowPatientForm(true)}
+            onClick={() => openPatientForm()}
             className="btn-secondary"
           >
             <Plus className="w-4 h-4 inline mr-1" /> Novo Paciente
@@ -286,101 +398,100 @@ export default function AtendenteDashboard() {
         />
       </div>
 
-        {/* Bloquear/Desbloquear Agenda do Médico — em destaque no topo; lista com scroll interno para não empurrar o resto da página */}
-        <div className="sc-card mb-6">
-          <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
-            Gerenciar Bloqueio de Agenda
-          </h2>
-          {doctors.length === 0 ? (
-            <div className="text-sm text-slate-400 py-4">
-              Nenhum médico cadastrado em sua unidade.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {doctors.map((doctor) => {
-                const todayStr = toLocalDateKey(new Date());
-                const activeLocksToday = (doctor.doctorLocks || []).filter(
-                  (lock) =>
-                    lock.active && toLocalDateKey(lock.date) === todayStr,
-                );
-                const hasActiveLock = activeLocksToday.length > 0;
-                const activeLock = activeLocksToday[0];
-                const upcomingLocks = (doctor.doctorLocks || [])
-                  .filter(
-                    (lock) =>
-                      lock.active && toLocalDateKey(lock.date) > todayStr,
-                  )
-                  .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                return (
-                  <div
-                    key={doctor.id}
-                    className={`flex justify-between items-center p-3 rounded-md border ${
-                      hasActiveLock
-                        ? "border-[#E76F51] bg-[#E76F51]/5"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold text-[#1D3557]">
-                        {doctor.name}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {doctor.specialty}
-                      </div>
-                      {hasActiveLock && activeLock && (
-                        <div className="text-xs text-[#E76F51] mt-1 font-semibold">
-                          Bloqueado hoje: {activeLock.reason}
-                        </div>
-                      )}
-                      {upcomingLocks.map((lock) => (
-                        <div
-                          key={lock.id}
-                          className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
-                        >
-                          <span>
-                            Bloqueio agendado para{" "}
-                            {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
-                            {lock.reason}
-                          </span>
-                          <button
-                            onClick={() => handleUnlockDoctor(lock.id)}
-                            disabled={lockingInProgress}
-                            className="text-[#457B9D] underline hover:no-underline disabled:opacity-50"
-                          >
-                            Cancelar bloqueio
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    {!hasActiveLock ? (
-                      <button
-                        onClick={() => handleLockDoctor(doctor)}
-                        disabled={lockingInProgress}
-                        className="px-3 py-1 bg-[#E76F51] text-white rounded text-xs font-semibold hover:bg-[#E76F51]/90 disabled:opacity-50 transition"
-                      >
-                        <Lock className="w-3 h-3 inline mr-1" /> Bloquear
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleUnlockDoctor(activeLock.id)}
-                        disabled={lockingInProgress}
-                        className="px-3 py-1 bg-[#457B9D] text-white rounded text-xs font-semibold hover:bg-[#457B9D]/90 disabled:opacity-50 transition"
-                      >
-                        <LockOpen className="w-3 h-3 inline mr-1" /> Desbloquear
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
-            <strong>Dica:</strong> Use este gerenciador quando o médico
-            avisar de um imprevisto. A agenda será bloqueada imediatamente e os
-            pacientes serão notificados.
+      {/* Bloquear/Desbloquear Agenda do Médico — em destaque no topo; lista com scroll interno para não empurrar o resto da página */}
+      <div className="sc-card mb-6">
+        <h2 className="font-display font-bold text-lg text-[#1D3557] mb-4">
+          Gerenciar Bloqueio de Agenda
+        </h2>
+        {doctors.length === 0 ? (
+          <div className="text-sm text-slate-400 py-4">
+            Nenhum médico cadastrado em sua unidade.
           </div>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {doctors.map((doctor) => {
+              const todayStr = toLocalDateKey(new Date());
+              const activeLocksToday = (doctor.doctorLocks || []).filter(
+                (lock) =>
+                  lock.active && toLocalDateKey(lock.date) === todayStr,
+              );
+              const hasActiveLock = activeLocksToday.length > 0;
+              const activeLock = activeLocksToday[0];
+              const upcomingLocks = (doctor.doctorLocks || [])
+                .filter(
+                  (lock) =>
+                    lock.active && toLocalDateKey(lock.date) > todayStr,
+                )
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+              return (
+                <div
+                  key={doctor.id}
+                  className={`flex justify-between items-center p-3 rounded-md border ${hasActiveLock
+                      ? "border-[#E76F51] bg-[#E76F51]/5"
+                      : "border-slate-200 bg-slate-50"
+                    }`}
+                >
+                  <div>
+                    <div className="font-semibold text-[#1D3557]">
+                      {doctor.name}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {doctor.specialty}
+                    </div>
+                    {hasActiveLock && activeLock && (
+                      <div className="text-xs text-[#E76F51] mt-1 font-semibold">
+                        Bloqueado hoje: {activeLock.reason}
+                      </div>
+                    )}
+                    {upcomingLocks.map((lock) => (
+                      <div
+                        key={lock.id}
+                        className="text-xs text-[#457B9D] mt-1 font-semibold flex items-center gap-2"
+                      >
+                        <span>
+                          Bloqueio agendado para{" "}
+                          {new Date(lock.date).toLocaleDateString("pt-BR")}:{" "}
+                          {lock.reason}
+                        </span>
+                        <button
+                          onClick={() => handleUnlockDoctor(lock.id)}
+                          disabled={lockingInProgress}
+                          className="text-[#457B9D] underline hover:no-underline disabled:opacity-50"
+                        >
+                          Cancelar bloqueio
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {!hasActiveLock ? (
+                    <button
+                      onClick={() => handleLockDoctor(doctor)}
+                      disabled={lockingInProgress}
+                      className="px-3 py-1 bg-[#E76F51] text-white rounded text-xs font-semibold hover:bg-[#E76F51]/90 disabled:opacity-50 transition"
+                    >
+                      <Lock className="w-3 h-3 inline mr-1" /> Bloquear
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUnlockDoctor(activeLock.id)}
+                      disabled={lockingInProgress}
+                      className="px-3 py-1 bg-[#457B9D] text-white rounded text-xs font-semibold hover:bg-[#457B9D]/90 disabled:opacity-50 transition"
+                    >
+                      <LockOpen className="w-3 h-3 inline mr-1" /> Desbloquear
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-slate-700">
+          <strong>Dica:</strong> Use este gerenciador quando o médico
+          avisar de um imprevisto. A agenda será bloqueada imediatamente e os
+          pacientes serão notificados.
         </div>
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Patient search */}
@@ -398,32 +509,44 @@ export default function AtendenteDashboard() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md text-sm"
             />
           </div>
+
           <div className="max-h-96 overflow-y-auto space-y-1">
             {patients.slice(0, 30).map((p) => (
-              <div
-                key={p.id}
-                className="flex justify-between items-center border-b border-slate-100 py-2 text-sm"
-                data-testid={`patient-${p.id}`}
-              >
-                <div>
-                  <div className="font-semibold text-[#1D3557]">{p.name}</div>
-                  <div className="text-xs text-slate-500">
-                    {p.cpf} · {p.phone}
+                <div
+                  key={p.id}
+                  className="flex justify-between items-center border-b border-slate-100 py-2 text-sm"
+                  data-testid={`patient-${p.id}`}
+                >
+                  <div>
+                    <div className="font-semibold text-[#1D3557]">{p.name}</div>
+                    <div className="text-xs text-slate-500">
+                      {p.cpf} · {p.phone}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openPatientForm(p)}
+                      className="text-slate-500 bg-slate-200 hover:bg-slate-300 text-xs py-1 px-2 rounded-md"
+                      title="Editar paciente"
+                    >
+                      Editar
+                    </button>
+
+                    {p.blocked_online && (
+                      <span className="text-[10px] bg-[#E76F51]/10 text-[#E76F51] px-2 py-1 rounded font-bold">
+                        BLOQUEADO
+                      </span>
+                    )}
                   </div>
                 </div>
-                {p.blocked_online && (
-                  <span className="text-[10px] bg-[#E76F51]/10 text-[#E76F51] px-2 py-1 rounded font-bold">
-                    BLOQUEADO
-                  </span>
-                )}
-              </div>
             ))}
           </div>
         </div>
 
         <div className="sc-card">
           <div className="mb-4 border-b border-slate-100 pb-3">
-            {/* Alinha o título e o botão de ordenação lado a lado no topo */}
             <div className="flex justify-between items-center w-full">
               <h2 className="font-display font-bold text-lg text-[#1D3557] m-0">
                 Agenda de Hoje
@@ -688,7 +811,10 @@ export default function AtendenteDashboard() {
       )}
 
       {showPatientForm && (
-        <Modal title="Novo Paciente" onClose={() => setShowPatientForm(false)}>
+          <Modal
+            title={editingPatient ? "Editar Paciente" : "Novo Paciente"}
+            onClose={() => setShowPatientForm(false)}
+          >
           <div className="grid grid-cols-2 gap-3">
             <Field label="Nome completo">
               <input
@@ -845,9 +971,61 @@ export default function AtendenteDashboard() {
                   updateNp("lgpd_accepted", e.target.checked)
                 }
               />
-              Paciente aceitou os Termos de Uso (LGPD)
+              Paciente aceitou os Termos de Uso
+            </label>
+            <label className="col-span-2 flex items-center gap-2 text-sm text-slate-600 mb-6">
+              <input
+                type="checkbox"
+                checked={np.responsible_allowed}
+                onChange={(e) =>
+                  updateNp("responsible_allowed", e.target.checked)
+                }
+              />
+              Permitir vínculo com responsável
             </label>
           </div>
+          {np.responsible_allowed && (
+              <>
+                <Field label="Nome do responsável">
+                  <input
+                    value={np.responsible_name}
+                    onChange={(e) =>
+                      updateNp("responsible_name", e.target.value)
+                    }
+                    className="inp mb-6"
+                  />
+                </Field>
+                <Field label="CPF do responsável">
+                  <input
+                    value={np.responsible_cpf}
+                    onChange={(e) =>
+                      updateNp("responsible_cpf", e.target.value)
+                    }
+                    className="inp mb-6"
+                  />
+                </Field>
+                <Field label="Telefone do responsável">
+                  <input
+                    value={np.responsible_phone}
+                    onChange={(e) =>
+                      updateNp("responsible_phone", e.target.value)
+                    }
+                    className="inp mb-6"
+                    placeholder="(99) 99999-9999"
+                  />
+                </Field>
+                <Field label="Nível de familiaridade">
+                  <input
+                    value={np.responsible_relationship_level}
+                    onChange={(e) =>
+                      updateNp("responsible_relationship_level", e.target.value)
+                    }
+                    className="inp mb-6"
+                    placeholder="Pai, Mãe, Irmão..."
+                  />
+                </Field>
+              </>
+          )}
           <div className="flex justify-end gap-2 mt-6">
             <button
               onClick={() => setShowPatientForm(false)}
@@ -857,11 +1035,11 @@ export default function AtendenteDashboard() {
             </button>
             <button
               data-testid="np-submit"
-              onClick={createPatient}
+              onClick={savePatient}
               disabled={!np.name || !np.cpf}
               className="btn-primary disabled:opacity-50"
             >
-              Cadastrar
+              {editingPatient ? "Salvar" : "Cadastrar"}
             </button>
           </div>
         </Modal>
@@ -970,22 +1148,20 @@ function LockDoctorModal({ doctor, onClose, onConfirm, isLoading }) {
             <button
               type="button"
               onClick={() => setWhen("hoje")}
-              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${
-                when === "hoje"
+              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${when === "hoje"
                   ? "bg-[#E76F51] text-white border-[#E76F51]"
                   : "bg-white text-slate-700 border-slate-200 hover:border-[#E76F51]"
-              }`}
+                }`}
             >
               Bloquear agora (hoje)
             </button>
             <button
               type="button"
               onClick={() => setWhen("agendar")}
-              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${
-                when === "agendar"
+              className={`px-3 py-2 rounded-md text-sm font-semibold border transition ${when === "agendar"
                   ? "bg-[#457B9D] text-white border-[#457B9D]"
                   : "bg-white text-slate-700 border-slate-200 hover:border-[#457B9D]"
-              }`}
+                }`}
             >
               Agendar para outro dia
             </button>

@@ -257,7 +257,7 @@ export default function ConfiguracaoVagas() {
               <tr>
                 <th className="text-left px-4 py-3">Dia da semana</th>
                 <th className="text-left px-4 py-3">
-                  % agendamentos (alvo)
+                  % agendamentos
                 </th>
                 <th className="text-left px-4 py-3">
                   Máx. vagas por agendamento no dia
