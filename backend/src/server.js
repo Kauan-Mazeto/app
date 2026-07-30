@@ -181,21 +181,24 @@ async function findLeastBusyDoctor(unit, specialty, date) {
 // limite de vagas online configurado para aquele dia da semana.
 // Sem configuração cadastrada para a unidade/dia = sem limite (não bloqueia).
 async function isOnlineSlotBlocked(unit, date, excludeApptId = null) {
-  const dayOfWeek = brDayOfWeek(date);
+  const dayOfWeek = date.getDay();
+
   const config = await prisma.onlineSlotConfig.findUnique({
     where: { unit_dayOfWeek: { unit, dayOfWeek } },
   });
+
   if (!config) return { blocked: false, used: 0, max: null };
 
   const { start, end } = dayRange(date);
+
   const used = await prisma.appointment.count({
     where: {
       unit,
-      appointmentType: "online",
       scheduledAt: { gte: start, lt: end },
       ...(excludeApptId ? { id: { not: excludeApptId } } : {}),
     },
   });
+
   return {
     blocked: used >= config.maxOnlineSlots,
     used,
@@ -431,8 +434,8 @@ api.post(
       req.user.role === "atendente"
         ? "presencial"
         : req.body.modality === "online"
-          ? "online"
-          : "presencial";
+           "presencial";
+
     const scheduledAt = new Date(req.body.scheduled_at);
 
     if (modality === "online") {
