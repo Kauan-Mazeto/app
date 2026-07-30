@@ -67,7 +67,12 @@ export default function ConfiguracaoVagas() {
         r.data.days.map((d) => [d.day_of_week, d]),
       );
       setDays(WEEKDAYS.map((w) => ({ ...w, ...byDay[w.day_of_week] })));
-      const todayStr = new Date().toISOString().slice(0, 10);
+      // .toISOString() sempre devolve em UTC — usar isso direto pega o dia
+      // errado perto da meia-noite em Brasília (UTC-3). Deslocamos -3h antes
+      // de fatiar, assim funciona independente do fuso do navegador.
+      const todayStr = new Date(Date.now() - 3 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
       const av = await api.get(
         `/scheduling-config/availability?unit=${encodeURIComponent(u)}&date=${todayStr}`,
       );

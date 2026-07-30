@@ -157,7 +157,12 @@ export default function AtendenteDashboard() {
 
   const createAppt = async () => {
     try {
-      const iso = new Date(ap.scheduled_at).toISOString();
+      // ap.scheduled_at vem do input datetime-local (ex.: "2026-07-29T22:43"),
+      // sempre em horário de Brasília — usamos o offset "-03:00" explícito
+      // em vez de deixar o navegador interpretar como fuso local, porque se
+      // o relógio/fuso do computador não estiver certo, new Date(...) sem
+      // offset converte errado.
+      const iso = new Date(`${ap.scheduled_at}:00-03:00`).toISOString();
       await api.post("/appointments", {
         ...ap,
         unit: user?.unit || ap.unit,
