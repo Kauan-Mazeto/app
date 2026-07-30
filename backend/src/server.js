@@ -468,11 +468,13 @@ api.post(
         doctorId: doctor.id,
         specialty: req.body.specialty,
         scheduledAt,
-        priority: req.body.priority || "normal",
+        priority: req.body.priority || 'normal',
         unit,
         appointmentType: modality,
+        status: 'aguardando', // 👈 adiciona isso
       },
     });
+
     res.json(toAppt(a));
   },
 );
