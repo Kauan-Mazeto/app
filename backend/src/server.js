@@ -67,7 +67,7 @@ const toAppt = (a) => ({
   specialty: a.specialty,
   priority: a.priority,
   unit: a.unit,
-  modality: a.type,
+  modality: a.appointmentType,
   status: a.status,
   scheduled_at: a.scheduledAt.toISOString(),
   patient: a.patient
@@ -101,20 +101,35 @@ const toPrescription = (r) => ({
   created_at: r.createdAt?.toISOString(),
 });
 
-// Retorna início/fim (00:00–24:00) do dia local da data informada.
+const BR_OFFSET = "-03:00"; // Horário de Brasília (sem horário de verão desde 2019)
+
+// Retorna "YYYY-MM-DD" correspondente ao instante informado, no horário de
+// Brasília — independente do fuso horário configurado no processo Node.
+const brDateKey = (date) => {
+  const shifted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  return shifted.toISOString().slice(0, 10);
+};
+
+// Retorna início/fim (00:00–24:00) do dia em Brasília que contém `date`.
+// Usa offset explícito (-03:00) na string ISO, então o resultado é o mesmo
+// instante absoluto não importa o fuso horário do servidor/container.
 const dayRange = (date) => {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  const key = brDateKey(new Date(date));
+  const start = new Date(`${key}T00:00:00${BR_OFFSET}`);
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
   return { start, end };
 };
 
-// Converte "YYYY-MM-DD" em meia-noite local (evita deslocamento UTC).
-const parseLocalDate = (dateStr) => {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d, 0, 0, 0, 0);
+// Retorna o dia da semana (0=domingo...6=sábado) do instante informado,
+// segundo o calendário de Brasília — sem depender do fuso do servidor.
+const brDayOfWeek = (date) => {
+  const [y, m, d] = brDateKey(new Date(date)).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 };
+
+// Converte "YYYY-MM-DD" em meia-noite de Brasília (evita depender do fuso do servidor).
+const parseLocalDate = (dateStr) => new Date(`${dateStr}T00:00:00${BR_OFFSET}`);
 
 // Verifica se o médico tem bloqueio de agenda ativo na data informada.
 async function isDoctorLockedOnDate(doctorId, date) {
@@ -166,7 +181,7 @@ async function findLeastBusyDoctor(unit, specialty, date) {
 // limite de vagas online configurado para aquele dia da semana.
 // Sem configuração cadastrada para a unidade/dia = sem limite (não bloqueia).
 async function isOnlineSlotBlocked(unit, date, excludeApptId = null) {
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = brDayOfWeek(date);
   const config = await prisma.onlineSlotConfig.findUnique({
     where: { unit_dayOfWeek: { unit, dayOfWeek } },
   });
@@ -176,7 +191,7 @@ async function isOnlineSlotBlocked(unit, date, excludeApptId = null) {
   const used = await prisma.appointment.count({
     where: {
       unit,
-      type: "online",
+      appointmentType: "online",
       scheduledAt: { gte: start, lt: end },
       ...(excludeApptId ? { id: { not: excludeApptId } } : {}),
     },
@@ -380,7 +395,7 @@ api.put(
 api.get("/appointments", requireAuth, async (req, res) => {
   const where = {};
   if (req.query.date) {
-    const d = new Date(req.query.date + "T00:00:00");
+    const d = new Date(`${req.query.date}T00:00:00${BR_OFFSET}`);
     const end = new Date(d);
     end.setDate(end.getDate() + 1);
     where.scheduledAt = { gte: d, lt: end };
@@ -455,7 +470,7 @@ api.post(
         scheduledAt,
         priority: req.body.priority || "normal",
         unit,
-        type: modality,
+        appointmentType: modality,
       },
     });
     res.json(toAppt(a));
@@ -508,10 +523,7 @@ api.get("/queue/today", requireAuth, async (req, res) => {
   if (!["medico", "atendente", "admin"].includes(req.user.role)) {
     return res.status(403).json({ detail: "Acesso negado" });
   }
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const { start, end } = dayRange(new Date());
   const where = { scheduledAt: { gte: start, lt: end } };
   if (req.user.role === "medico") where.doctorId = req.user.id;
   const appts = await prisma.appointment.findMany({
@@ -585,8 +597,7 @@ api.post(
     // Converter date (YYYY-MM-DD) para meia-noite local
     const lockDate = parseLocalDate(date);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { start: today } = dayRange(new Date());
     if (lockDate < today) {
       return res.status(400).json({
         detail: "Não é possível bloquear uma data no passado",
@@ -650,7 +661,7 @@ api.post(
           data: {
             status: "bloqueio_medico",
             justification: reason.trim(),
-            lockId: lock.id,
+            doctorScheduleLockId: lock.id,
           },
         });
       }
@@ -917,9 +928,9 @@ api.get("/scheduling-config/availability", requireAuth, async (req, res) => {
     return res
       .status(400)
       .json({ detail: "Parâmetros 'unit' e 'date' são obrigatórios" });
-  const d = new Date(date + "T00:00:00");
+  const d = new Date(`${date}T00:00:00${BR_OFFSET}`);
   const config = await prisma.onlineSlotConfig.findUnique({
-    where: { unit_dayOfWeek: { unit, dayOfWeek: d.getDay() } },
+    where: { unit_dayOfWeek: { unit, dayOfWeek: brDayOfWeek(d) } },
   });
   const { start, end } = dayRange(d);
   const used = await prisma.appointment.count({
@@ -932,7 +943,7 @@ api.get("/scheduling-config/availability", requireAuth, async (req, res) => {
   res.json({
     unit,
     date,
-    day_of_week: d.getDay(),
+    day_of_week: brDayOfWeek(d),
     online_percentage: config?.onlinePercentage ?? null,
     max_online_slots: max,
     used_online_slots: used,
@@ -1184,8 +1195,7 @@ api.get(
       medMap[p.medication] = (medMap[p.medication] || 0) + 1;
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { start: today } = dayRange(new Date());
     const weekly = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);

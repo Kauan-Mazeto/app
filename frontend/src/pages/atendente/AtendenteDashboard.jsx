@@ -22,6 +22,17 @@ function toLocalDateKey(d) {
   return `${y}-${m}-${day}`;
 }
 
+// A API retorna scheduled_at em ISO/UTC (ex.: "...T01:43:00.000Z").
+// slice(11,16) pegava direto o horário UTC, que fica errado para quem
+// está em fuso -03:00. Aqui convertemos para o horário local do navegador.
+function toLocalTimeHHMM(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+}
+
 export default function AtendenteDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -80,17 +91,21 @@ export default function AtendenteDashboard() {
   const [filterEndTime, setFilterEndTime] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
   const load = async () => {
-    const p = await api.get(`/patients?q=${encodeURIComponent(q)}`);
-    setPatients(p.data);
-    const today = toLocalDateKey(new Date());
-    const a = await api.get(`/appointments?date=${today}`);
-    setAppts(a.data);
+    try {
+      const p = await api.get(`/patients?q=${encodeURIComponent(q)}`);
+      setPatients(p.data);
+      const today = toLocalDateKey(new Date());
+      const a = await api.get(`/appointments?date=${today}`);
+      setAppts(a.data);
 
-    // Carregar médicos da unidade do atendente
-    if (user?.unit) {
-      const docsRes = await api.get("/users?role=medico");
-      const doctorsInUnit = docsRes.data.filter((d) => d.unit === user.unit);
-      setDoctors(doctorsInUnit);
+      // Carregar médicos da unidade do atendente
+      if (user?.unit) {
+        const docsRes = await api.get("/users?role=medico");
+        const doctorsInUnit = docsRes.data.filter((d) => d.unit === user.unit);
+        setDoctors(doctorsInUnit);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Erro ao carregar dados da página");
     }
   };
 
@@ -603,7 +618,7 @@ export default function AtendenteDashboard() {
                     ?.toLowerCase()
                     .includes(filterName.toLowerCase());
 
-                const apptTime = a.scheduled_at?.slice(11, 16); // Recorta "HH:MM" da string ISO
+                const apptTime = toLocalTimeHHMM(a.scheduled_at); // "HH:MM" em horário local
                 const matchesStart =
                   !filterStartTime || apptTime >= filterStartTime;
                 const matchesEnd = !filterEndTime || apptTime <= filterEndTime;
@@ -613,8 +628,8 @@ export default function AtendenteDashboard() {
 
               // 2. Ordena os resultados filtrados baseando-se no botão (Crescente ou Decrescente)
               const sortedAppts = [...filteredAppts].sort((a, b) => {
-                const timeA = a.scheduled_at?.slice(11, 16) || "";
-                const timeB = b.scheduled_at?.slice(11, 16) || "";
+                const timeA = toLocalTimeHHMM(a.scheduled_at) || "";
+                const timeB = toLocalTimeHHMM(b.scheduled_at) || "";
                 return sortOrder === "asc"
                   ? timeA.localeCompare(timeB)
                   : timeB.localeCompare(timeA);
@@ -647,7 +662,7 @@ export default function AtendenteDashboard() {
                   </div>
                   <div className="text-right">
                     <div className="font-mono-nums font-bold text-[#1D3557]">
-                      {a.scheduled_at?.slice(11, 16)}
+                      {toLocalTimeHHMM(a.scheduled_at)}
                     </div>
                     <div className="text-xs capitalize text-slate-500">
                       {a.status}
