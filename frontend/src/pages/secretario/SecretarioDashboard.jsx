@@ -117,7 +117,6 @@ export default function SecretarioDashboard() {
           </ResponsiveContainer>
         </Card>
       </div>
-
       {/* <div className="mb-6">
         <Card title="Previsão de demanda de medicamentos com base no consumo mensal">
           <ResponsiveContainer width="100%" height={280}>
@@ -131,8 +130,6 @@ export default function SecretarioDashboard() {
           </ResponsiveContainer>
         </Card>
       </div>*/}
-
-
       <Card title="Ranking de unidades de saúde por eficiência no atendimento">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase tracking-wider text-slate-500">

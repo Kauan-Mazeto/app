@@ -17,6 +17,17 @@ const statusStyle = {
   bloqueio_medico: "text-[#E76F51]",
 };
 
+// A API retorna scheduled_at em ISO/UTC (ex.: "...T01:43:00.000Z").
+// slice(11,16) pegava direto o horário UTC, que fica errado para quem
+// está em fuso -03:00. Aqui convertemos para o horário local do navegador.
+function toLocalTimeHHMM(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+}
+
 export default function MedicoDashboard() {
   const [queue, setQueue] = useState([]);
   const [lock, setLock] = useState(null);
@@ -131,7 +142,7 @@ export default function MedicoDashboard() {
                     <div className="text-xs text-slate-500">{a.patient?.cpf}</div>
                   </td>
                   <td className="px-6 py-4 font-mono-nums text-slate-700">
-                    {a.scheduled_at?.slice(11, 16)}
+                    {toLocalTimeHHMM(a.scheduled_at)}
                   </td>
                   <td className={`px-6 py-4 font-semibold capitalize ${statusStyle[a.status]}`}>
                     {a.status === "bloqueio_medico" ? "Cancelada (bloqueio)" : a.status}

@@ -57,6 +57,12 @@ model Patient {
   allergies              String?
   chronicConditions      String?
 
+  responsibleAllowed        Boolean @default(false)
+  responsibleName           String?
+  responsibleCpf            String?
+  responsiblePhone          String?
+  responsibleRelationshipLevel String?
+
   appointments  Appointment[]
   prescriptions Prescription[]
   exams         Exam[]
@@ -64,33 +70,14 @@ model Patient {
   vacancies     Vacancy[]
 }
 
-model Appointment {
-  id            String   @id @default(uuid())
-  patientId     String
-  doctorId      String
-  specialty     String
-  scheduledAt   DateTime
-  priority      String   @default("normal")
-  unit          String   @default("UBS Central")
-  status        String   @default("aguardando")
-  justification String?
-  checkedIn     Boolean  @default(false)
-  type          String   @default("presencial")
-  lockId        String?
-  createdAt     DateTime @default(now())
-  patient       Patient  @relation(fields: [patientId], references: [id])
-  doctor        User     @relation(fields: [doctorId], references: [id])
-  lock          DoctorScheduleLock? @relation(fields: [lockId], references: [id])
-}
-
 model OnlineSlotConfig {
-  id               String   @id @default(uuid())
-  unit             String
-  dayOfWeek        Int // 0 = domingo ... 6 = sábado
-  onlinePercentage Int      @default(50)
-  maxOnlineSlots   Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(uuid())
+  unit              String
+  dayOfWeek         Int
+  onlinePercentage  Int      @default(0)
+  maxOnlineSlots    Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([unit, dayOfWeek])
 }
@@ -232,4 +219,24 @@ model DoctorScheduleLock {
   appointments   Appointment[]
 
   @@index([doctorId, date])
+}
+
+model Appointment {
+  id                   String    @id @default(uuid())
+  patientId            String
+  doctorId             String
+  specialty            String
+  priority             String    @default("normal")
+  status               String    @default("agendado")
+  scheduledAt          DateTime
+  unit                 String?
+  appointmentType String   @default("presencial") // novo campo
+  doctorName           String?
+  doctorCrm            String?
+  doctorScheduleLockId String?
+  createdAt            DateTime  @default(now())
+
+  patient              Patient             @relation(fields: [patientId], references: [id])
+  doctor               User                @relation(fields: [doctorId], references: [id])
+  doctorScheduleLock   DoctorScheduleLock? @relation(fields: [doctorScheduleLockId], references: [id])
 }
