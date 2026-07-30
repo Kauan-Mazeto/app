@@ -92,7 +92,7 @@ function App() {
             >
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
-              <Route path="/secretario/estoque" element={<StockDashboard />} />
+              <Route path="/secretario/estoque" element={<StockManagement />} />  
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 
