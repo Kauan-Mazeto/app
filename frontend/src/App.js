@@ -11,6 +11,7 @@ import VagasOciosas from "@/pages/atendente/VagasOciosas";
 import EntregaExames from "@/pages/atendente/EntregaExames";
 import BuscadorRefs from "@/pages/atendente/BuscadorRefs";
 import StockManagement from "@/pages/atendente/StockManagement";
+import StockDashboard from "@/pages/secretario/StockDashboard";
 import SecretarioDashboard from "@/pages/secretario/SecretarioDashboard";
 import Auditoria from "@/pages/secretario/Auditoria";
 import ConfiguracaoVagas from "@/pages/atendente/ConfiguracaoVagas";
@@ -91,11 +92,7 @@ function App() {
             >
               <Route path="/secretario" element={<SecretarioDashboard />} />
               <Route path="/secretario/auditoria" element={<Auditoria />} />
-              <Route
-                path="/secretario/estoque"
-                element={<StockManagement mode="secretario" />}
-              />
-
+              <Route path="/secretario/estoque" element={<StockDashboard />} />
               <Route path="/secretario/Feedbacks" element={<Feedbacks />} />
             </Route>
 

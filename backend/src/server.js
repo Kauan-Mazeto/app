@@ -52,6 +52,11 @@ const toPatient = (p) => ({
   allergies: p.allergies,
   chronic_conditions: p.chronicConditions,
   lgpd_accepted: p.lgpdAccepted,
+  responsible_allowed: p.responsibleAllowed,
+  responsible_name: p.responsibleName,
+  responsible_cpf: p.responsibleCpf,
+  responsible_phone: p.responsiblePhone,
+  responsible_relationship_level: p.responsibleRelationshipLevel,
   missed_count: p.missedCount,
   blocked_online: p.blockedOnline,
 });
@@ -289,7 +294,11 @@ api.get("/patients/:id", requireAuth, async (req, res) => {
     })),
   });
 });
-api.post("/patients", requireAuth, requireRoles("atendente", "admin"), async (req, res) => {
+api.post(
+  "/patients",
+  requireAuth,
+  requireRoles("atendente", "admin"),
+  async (req, res) => {
     try {
       const p = await prisma.patient.create({
         data: {
@@ -311,11 +320,59 @@ api.post("/patients", requireAuth, requireRoles("atendente", "admin"), async (re
           allergies: req.body.allergies,
           chronicConditions: req.body.chronic_conditions,
           lgpdAccepted: !!req.body.lgpd_accepted,
+          responsibleAllowed: !!req.body.responsible_allowed,
+          responsibleName: req.body.responsible_name || null,
+          responsibleCpf: req.body.responsible_cpf || null,
+          responsiblePhone: req.body.responsible_phone || null,
+          responsibleRelationshipLevel: req.body.responsible_relationship_level || null,
         },
       });
+
       res.json(toPatient(p));
-    } catch {
-      res.status(400).json({ detail: "CPF já cadastrado" });
+    } catch (e) {
+      res.status(400).json({ detail: e.message });
+    }
+  },
+);
+
+api.put(
+  "/patients/:id",
+  requireAuth,
+  requireRoles("atendente", "admin"),
+  async (req, res) => {
+    try {
+      const updated = await prisma.patient.update({
+        where: { id: req.params.id },
+        data: {
+          name: req.body.name,
+          cpf: req.body.cpf,
+          birthDate: req.body.birth_date,
+          phone: req.body.phone,
+          address: req.body.address,
+          sex: req.body.sex,
+          motherName: req.body.mother_name,
+          fatherName: req.body.father_name,
+          susCard: req.body.sus_card,
+          cep: req.body.cep,
+          cityState: req.body.city_state,
+          nearestUnit: req.body.nearest_unit,
+          emergencyContactName: req.body.emergency_contact_name,
+          emergencyContactPhone: req.body.emergency_contact_phone,
+          substanceUse: req.body.substance_use,
+          allergies: req.body.allergies,
+          chronicConditions: req.body.chronic_conditions,
+          lgpdAccepted: !!req.body.lgpd_accepted,
+          responsibleAllowed: !!req.body.responsible_allowed,
+          responsibleName: req.body.responsible_name || null,
+          responsibleCpf: req.body.responsible_cpf || null,
+          responsiblePhone: req.body.responsible_phone || null,
+          responsibleRelationshipLevel: req.body.responsible_relationship_level || null,
+        },
+      });
+
+      res.json(toPatient(updated));
+    } catch (e) {
+      res.status(400).json({ detail: e.message });
     }
   },
 );
@@ -866,7 +923,10 @@ api.get("/scheduling-config/availability", requireAuth, async (req, res) => {
   });
   const { start, end } = dayRange(d);
   const used = await prisma.appointment.count({
-    where: { unit, type: "online", scheduledAt: { gte: start, lt: end } },
+    where: {
+      unit,
+      scheduledAt: { gte: start, lt: end },
+    },
   });
   const max = config?.maxOnlineSlots ?? null;
   res.json({
